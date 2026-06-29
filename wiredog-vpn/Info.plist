@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict/>
+	</array>
+	<key>NSVPNUsageDescription</key>
+	<string>WireDog VPN secures your internet connection and protects your privacy.</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>IosevkaTerm-Extended.ttf</string>
+	</array>
+	<key>WireDogAPIBaseURL</key>
+	<string>$(WIREDOG_API_BASE_URL)</string>
+	<key>WireDogAppGroupID</key>
+	<string>$(WIREDOG_APP_GROUP_ID)</string>
+	<key>WireDogAppStoreURL</key>
+	<string>$(WIREDOG_APP_STORE_URL)</string>
+	<key>WireDogKeychainGroup</key>
+	<string>$(WIREDOG_KEYCHAIN_GROUP)</string>
+	<key>WireDogTunnelBundleID</key>
+	<string>$(WIREDOG_TUNNEL_BUNDLE_ID)</string>
+	<key>WireDogURLDashboard</key>
+	<string>$(WIREDOG_URL_DASHBOARD)</string>
+	<key>WireDogURLGetStarted</key>
+	<string>$(WIREDOG_URL_GET_STARTED)</string>
+	<key>WireDogURLPrivacy</key>
+	<string>$(WIREDOG_URL_PRIVACY)</string>
+	<key>WireDogURLTerms</key>
+	<string>$(WIREDOG_URL_TERMS)</string>
+</dict>
+</plist>

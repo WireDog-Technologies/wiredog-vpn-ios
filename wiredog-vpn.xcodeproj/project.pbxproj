@@ -1,0 +1,816 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		304992202F9BE12A00B81A52 /* WireDog.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 30B58ECB2F93EBAF00D957B0 /* WireDog.storekit */; };
+		306D21992F1416E700F0891C /* NetworkExtension.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 306D21982F1416E700F0891C /* NetworkExtension.framework */; };
+		306D21A12F1416E700F0891C /* WireDogTunnel.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 306D21962F1416E700F0891C /* WireDogTunnel.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		30B58ECA2F93EB3900D957B0 /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 30B58EC92F93EB3900D957B0 /* StoreKit.framework */; };
+		30E993312F834E6500D237EA /* Config.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 30E993302F834E6500D237EA /* Config.xcconfig */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		306D219F2F1416E700F0891C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 307BA7812F130953007DB552 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 306D21952F1416E700F0891C;
+			remoteInfo = WireDogTunnel;
+		};
+		307BA79A2F130954007DB552 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 307BA7812F130953007DB552 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 307BA7882F130953007DB552;
+			remoteInfo = "wiredog-vpn";
+		};
+		307BA7A42F130955007DB552 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 307BA7812F130953007DB552 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 307BA7882F130953007DB552;
+			remoteInfo = "wiredog-vpn";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		306D21A22F1416E700F0891C /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				306D21A12F1416E700F0891C /* WireDogTunnel.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		306D21962F1416E700F0891C /* WireDogTunnel.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = WireDogTunnel.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		306D21982F1416E700F0891C /* NetworkExtension.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = NetworkExtension.framework; path = System/Library/Frameworks/NetworkExtension.framework; sourceTree = SDKROOT; };
+		307BA7892F130953007DB552 /* wiredog-vpn.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "wiredog-vpn.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		307BA7992F130954007DB552 /* wiredog-vpnTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "wiredog-vpnTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		307BA7A32F130955007DB552 /* wiredog-vpnUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "wiredog-vpnUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		30B58EC92F93EB3900D957B0 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
+		30B58ECB2F93EBAF00D957B0 /* WireDog.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = WireDog.storekit; sourceTree = "<group>"; };
+		30E993302F834E6500D237EA /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		306D21A52F1416E700F0891C /* Exceptions for "WireDogTunnel" folder in "WireDogTunnel" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 306D21952F1416E700F0891C /* WireDogTunnel */;
+		};
+		306D21A82F141C5000F0891C /* Exceptions for "wiredog-vpn" folder in "wiredog-vpn" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 307BA7882F130953007DB552 /* wiredog-vpn */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		306D219A2F1416E700F0891C /* WireDogTunnel */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				306D21A52F1416E700F0891C /* Exceptions for "WireDogTunnel" folder in "WireDogTunnel" target */,
+			);
+			path = WireDogTunnel;
+			sourceTree = "<group>";
+		};
+		307BA78B2F130953007DB552 /* wiredog-vpn */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				306D21A82F141C5000F0891C /* Exceptions for "wiredog-vpn" folder in "wiredog-vpn" target */,
+			);
+			path = "wiredog-vpn";
+			sourceTree = "<group>";
+		};
+		307BA79C2F130954007DB552 /* wiredog-vpnTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "wiredog-vpnTests";
+			sourceTree = "<group>";
+		};
+		307BA7A62F130955007DB552 /* wiredog-vpnUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "wiredog-vpnUITests";
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		306D21932F1416E700F0891C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				306D21992F1416E700F0891C /* NetworkExtension.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		307BA7862F130953007DB552 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				30B58ECA2F93EB3900D957B0 /* StoreKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		307BA7962F130954007DB552 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		307BA7A02F130955007DB552 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		306D21972F1416E700F0891C /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				30B58EC92F93EB3900D957B0 /* StoreKit.framework */,
+				306D21982F1416E700F0891C /* NetworkExtension.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		307BA7802F130953007DB552 = {
+			isa = PBXGroup;
+			children = (
+				30B58ECB2F93EBAF00D957B0 /* WireDog.storekit */,
+				307BA78B2F130953007DB552 /* wiredog-vpn */,
+				307BA79C2F130954007DB552 /* wiredog-vpnTests */,
+				307BA7A62F130955007DB552 /* wiredog-vpnUITests */,
+				306D219A2F1416E700F0891C /* WireDogTunnel */,
+				306D21972F1416E700F0891C /* Frameworks */,
+				307BA78A2F130953007DB552 /* Products */,
+				30E993302F834E6500D237EA /* Config.xcconfig */,
+			);
+			sourceTree = "<group>";
+		};
+		307BA78A2F130953007DB552 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				307BA7892F130953007DB552 /* wiredog-vpn.app */,
+				307BA7992F130954007DB552 /* wiredog-vpnTests.xctest */,
+				307BA7A32F130955007DB552 /* wiredog-vpnUITests.xctest */,
+				306D21962F1416E700F0891C /* WireDogTunnel.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		306D21952F1416E700F0891C /* WireDogTunnel */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 306D21A62F1416E700F0891C /* Build configuration list for PBXNativeTarget "WireDogTunnel" */;
+			buildPhases = (
+				306D21922F1416E700F0891C /* Sources */,
+				306D21932F1416E700F0891C /* Frameworks */,
+				306D21942F1416E700F0891C /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				306D219A2F1416E700F0891C /* WireDogTunnel */,
+			);
+			name = WireDogTunnel;
+			packageProductDependencies = (
+			);
+			productName = WireDogTunnel;
+			productReference = 306D21962F1416E700F0891C /* WireDogTunnel.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		307BA7882F130953007DB552 /* wiredog-vpn */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 307BA7AD2F130955007DB552 /* Build configuration list for PBXNativeTarget "wiredog-vpn" */;
+			buildPhases = (
+				307BA7852F130953007DB552 /* Sources */,
+				307BA7862F130953007DB552 /* Frameworks */,
+				307BA7872F130953007DB552 /* Resources */,
+				306D21A22F1416E700F0891C /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				306D21A02F1416E700F0891C /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				307BA78B2F130953007DB552 /* wiredog-vpn */,
+			);
+			name = "wiredog-vpn";
+			packageProductDependencies = (
+			);
+			productName = "wiredog-vpn";
+			productReference = 307BA7892F130953007DB552 /* wiredog-vpn.app */;
+			productType = "com.apple.product-type.application";
+		};
+		307BA7982F130954007DB552 /* wiredog-vpnTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 307BA7B02F130955007DB552 /* Build configuration list for PBXNativeTarget "wiredog-vpnTests" */;
+			buildPhases = (
+				307BA7952F130954007DB552 /* Sources */,
+				307BA7962F130954007DB552 /* Frameworks */,
+				307BA7972F130954007DB552 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				307BA79B2F130954007DB552 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				307BA79C2F130954007DB552 /* wiredog-vpnTests */,
+			);
+			name = "wiredog-vpnTests";
+			packageProductDependencies = (
+			);
+			productName = "wiredog-vpnTests";
+			productReference = 307BA7992F130954007DB552 /* wiredog-vpnTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		307BA7A22F130955007DB552 /* wiredog-vpnUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 307BA7B32F130955007DB552 /* Build configuration list for PBXNativeTarget "wiredog-vpnUITests" */;
+			buildPhases = (
+				307BA79F2F130955007DB552 /* Sources */,
+				307BA7A02F130955007DB552 /* Frameworks */,
+				307BA7A12F130955007DB552 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				307BA7A52F130955007DB552 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				307BA7A62F130955007DB552 /* wiredog-vpnUITests */,
+			);
+			name = "wiredog-vpnUITests";
+			packageProductDependencies = (
+			);
+			productName = "wiredog-vpnUITests";
+			productReference = 307BA7A32F130955007DB552 /* wiredog-vpnUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		307BA7812F130953007DB552 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1620;
+				LastUpgradeCheck = 2640;
+				TargetAttributes = {
+					306D21952F1416E700F0891C = {
+						CreatedOnToolsVersion = 16.2;
+					};
+					307BA7882F130953007DB552 = {
+						CreatedOnToolsVersion = 16.2;
+					};
+					307BA7982F130954007DB552 = {
+						CreatedOnToolsVersion = 16.2;
+						TestTargetID = 307BA7882F130953007DB552;
+					};
+					307BA7A22F130955007DB552 = {
+						CreatedOnToolsVersion = 16.2;
+						TestTargetID = 307BA7882F130953007DB552;
+					};
+				};
+			};
+			buildConfigurationList = 307BA7842F130953007DB552 /* Build configuration list for PBXProject "wiredog-vpn" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 307BA7802F130953007DB552;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 307BA78A2F130953007DB552 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				307BA7882F130953007DB552 /* wiredog-vpn */,
+				307BA7982F130954007DB552 /* wiredog-vpnTests */,
+				307BA7A22F130955007DB552 /* wiredog-vpnUITests */,
+				306D21952F1416E700F0891C /* WireDogTunnel */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		306D21942F1416E700F0891C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				30E993312F834E6500D237EA /* Config.xcconfig in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		307BA7872F130953007DB552 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				304992202F9BE12A00B81A52 /* WireDog.storekit in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		307BA7972F130954007DB552 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		307BA7A12F130955007DB552 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		306D21922F1416E700F0891C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		307BA7852F130953007DB552 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		307BA7952F130954007DB552 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		307BA79F2F130955007DB552 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		306D21A02F1416E700F0891C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 306D21952F1416E700F0891C /* WireDogTunnel */;
+			targetProxy = 306D219F2F1416E700F0891C /* PBXContainerItemProxy */;
+		};
+		307BA79B2F130954007DB552 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 307BA7882F130953007DB552 /* wiredog-vpn */;
+			targetProxy = 307BA79A2F130954007DB552 /* PBXContainerItemProxy */;
+		};
+		307BA7A52F130955007DB552 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 307BA7882F130953007DB552 /* wiredog-vpn */;
+			targetProxy = 307BA7A42F130955007DB552 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		306D21A32F1416E700F0891C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = WireDogTunnel/WireDogTunnelDebug.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = WireDogTunnel/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = WireDogTunnel;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/WireDogTunnel/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = "$(inherited)";
+				"OTHER_LDFLAGS[sdk=iphoneos*]" = (
+					"$(inherited)",
+					"-force_load",
+					"$(PROJECT_DIR)/WireDogTunnel/Frameworks/libwg-go.a",
+					"-lc++",
+				);
+				"OTHER_LDFLAGS[sdk=iphonesimulator*]" = "$(inherited)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.wiredog.vpn.tunnel;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/WireDogTunnel/WireGuardKit";
+				SWIFT_OBJC_BRIDGING_HEADER = "$(SRCROOT)/WireDogTunnel/WireDogTunnel-Bridging-Header.h";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		306D21A42F1416E700F0891C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = WireDogTunnel/WireDogTunnel.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = WireDogTunnel/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = WireDogTunnel;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/WireDogTunnel/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = "$(inherited)";
+				"OTHER_LDFLAGS[sdk=iphoneos*]" = (
+					"$(inherited)",
+					"-force_load",
+					"$(PROJECT_DIR)/WireDogTunnel/Frameworks/libwg-go.a",
+					"-lc++",
+				);
+				"OTHER_LDFLAGS[sdk=iphonesimulator*]" = "$(inherited)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.wiredog.vpn.tunnel;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/WireDogTunnel/WireGuardKit";
+				SWIFT_OBJC_BRIDGING_HEADER = "$(SRCROOT)/WireDogTunnel/WireDogTunnel-Bridging-Header.h";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		307BA7AB2F130955007DB552 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 30E993302F834E6500D237EA /* Config.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 48P557G374;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		307BA7AC2F130955007DB552 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 30E993302F834E6500D237EA /* Config.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 48P557G374;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		307BA7AE2F130955007DB552 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 30E993302F834E6500D237EA /* Config.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "wiredog-vpn/wiredog-vpnDebug.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 10;
+				DEVELOPMENT_ASSET_PATHS = "\"wiredog-vpn/Preview Content\"";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "wiredog-vpn/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "WireDog VPN";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "WireDog uses Face ID to restore your session without requiring your password.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.4.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.wiredog.vpn;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_CONCISE_MAGIC_FILE = NO;
+				SWIFT_UPCOMING_FEATURE_EXIST_ANY_REMOVAL = NO;
+				SWIFT_UPCOMING_FEATURE_FORWARD_TRAILING_CLOSURES = NO;
+				SWIFT_UPCOMING_FEATURE_IMPORT_OBJC_FORWARD_DECLARATIONS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		307BA7AF2F130955007DB552 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 30E993302F834E6500D237EA /* Config.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "wiredog-vpn/wiredog-vpn.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 10;
+				DEVELOPMENT_ASSET_PATHS = "\"wiredog-vpn/Preview Content\"";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "wiredog-vpn/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "WireDog VPN";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "WireDog uses Face ID to restore your session without requiring your password.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.4.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.wiredog.vpn;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		307BA7B12F130955007DB552 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.wiredog.vpn.Tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/wiredog-vpn.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/wiredog-vpn";
+			};
+			name = Debug;
+		};
+		307BA7B22F130955007DB552 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.wiredog.vpn.Tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/wiredog-vpn.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/wiredog-vpn";
+			};
+			name = Release;
+		};
+		307BA7B42F130955007DB552 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.wiredog.vpn.UITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = "wiredog-vpn";
+			};
+			name = Debug;
+		};
+		307BA7B52F130955007DB552 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.wiredog.vpn.UITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = "wiredog-vpn";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		306D21A62F1416E700F0891C /* Build configuration list for PBXNativeTarget "WireDogTunnel" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				306D21A32F1416E700F0891C /* Debug */,
+				306D21A42F1416E700F0891C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		307BA7842F130953007DB552 /* Build configuration list for PBXProject "wiredog-vpn" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				307BA7AB2F130955007DB552 /* Debug */,
+				307BA7AC2F130955007DB552 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		307BA7AD2F130955007DB552 /* Build configuration list for PBXNativeTarget "wiredog-vpn" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				307BA7AE2F130955007DB552 /* Debug */,
+				307BA7AF2F130955007DB552 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		307BA7B02F130955007DB552 /* Build configuration list for PBXNativeTarget "wiredog-vpnTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				307BA7B12F130955007DB552 /* Debug */,
+				307BA7B22F130955007DB552 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		307BA7B32F130955007DB552 /* Build configuration list for PBXNativeTarget "wiredog-vpnUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				307BA7B42F130955007DB552 /* Debug */,
+				307BA7B52F130955007DB552 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 307BA7812F130953007DB552 /* Project object */;
+}
