@@ -262,6 +262,72 @@ struct SettingsView: View {
                             .padding(16)
                             .background(Color.vpnCardBackground)
 
+                            Divider()
+                                .overlay(Color.vpnBorderColor)
+
+                            // Block Ads
+                            HStack(spacing: 12) {
+                                Image(systemName: "hand.raised.slash.fill")
+                                    .font(.system(size: 16))
+                                    .foregroundColor(.vpnPrimary)
+                                    .frame(width: 24)
+
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Block Ads")
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundColor(.vpnTextPrimary)
+
+                                    Text("Block ad and tracker domains")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.vpnTextSecondary)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+
+                                Toggle("", isOn: $vpnManager.settings.isBlockAdsEnabled)
+                                    .tint(.vpnGreen)
+                                    .labelsHidden()
+                                    .onChange(of: vpnManager.settings.isBlockAdsEnabled) { _ in
+                                        if vpnManager.connectionState == .connected {
+                                            showReconnectWarning = true
+                                        }
+                                    }
+                            }
+                            .padding(16)
+                            .background(Color.vpnCardBackground)
+
+                            Divider()
+                                .overlay(Color.vpnBorderColor)
+
+                            // Block Malware
+                            HStack(spacing: 12) {
+                                Image(systemName: "shield.lefthalf.filled")
+                                    .font(.system(size: 16))
+                                    .foregroundColor(.vpnPrimary)
+                                    .frame(width: 24)
+
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Block Malware")
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundColor(.vpnTextPrimary)
+
+                                    Text("Block known malware and phishing domains")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.vpnTextSecondary)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+
+                                Toggle("", isOn: $vpnManager.settings.isBlockMalwareEnabled)
+                                    .tint(.vpnGreen)
+                                    .labelsHidden()
+                                    .onChange(of: vpnManager.settings.isBlockMalwareEnabled) { _ in
+                                        if vpnManager.connectionState == .connected {
+                                            showReconnectWarning = true
+                                        }
+                                    }
+                            }
+                            .padding(16)
+                            .background(Color.vpnCardBackground)
+
                         }
                     }
                     .padding(.vertical, 12)

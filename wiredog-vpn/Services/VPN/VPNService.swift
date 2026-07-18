@@ -11,6 +11,7 @@ enum VPNError: LocalizedError {
     case notConnected
     case subscriptionExpired
     case notAuthenticated
+    case anotherVPNActive
 
     var errorDescription: String? {
         switch self {
@@ -30,6 +31,8 @@ enum VPNError: LocalizedError {
             return "Your subscription has expired. Please renew your subscription to continue using the VPN."
         case .notAuthenticated:
             return "You are not authenticated. Please log in to use the VPN."
+        case .anotherVPNActive:
+            return "Another VPN configuration is selected. Go to Settings > VPN, and select WireDog VPN."
         }
     }
 }
@@ -56,6 +59,8 @@ class VPNService: ObservableObject {
     private var lastKillSwitchEnabled = false
     private var lastIPv6Enabled = true
     private var lastLANAccessEnabled = true
+    private var lastBlockAdsEnabled = true
+    private var lastBlockMalwareEnabled = true
     private var lastSuccessfulHandshake: Date?
     private var lastStatsResponse: Date?
     private var foregroundedAt: Date?
@@ -178,7 +183,7 @@ class VPNService: ObservableObject {
 
     // MARK: - Connection Methods
 
-    func connect(serverId: String, killSwitchEnabled: Bool, ipv6Enabled: Bool = true, lanAccessEnabled: Bool = true) async throws {
+    func connect(serverId: String, killSwitchEnabled: Bool, ipv6Enabled: Bool = true, lanAccessEnabled: Bool = true, blockAdsEnabled: Bool = true, blockMalwareEnabled: Bool = true) async throws {
         LogService.shared.logService("Connect initiated for server \(serverId)")
 
         guard connectionState == .disconnected || isReconnecting else {
@@ -224,10 +229,12 @@ class VPNService: ObservableObject {
         lastKillSwitchEnabled = killSwitchEnabled
         lastIPv6Enabled = ipv6Enabled
         lastLANAccessEnabled = lanAccessEnabled
+        lastBlockAdsEnabled = blockAdsEnabled
+        lastBlockMalwareEnabled = blockMalwareEnabled
 
         do {
             // Phase 1: Fetch WireGuard configuration from API
-            let connectRequest = ConnectRequest(serverId: serverId)
+            let connectRequest = ConnectRequest(serverId: serverId, blockAds: blockAdsEnabled, blockMalware: blockMalwareEnabled)
             let response: ConnectResponse = try await APIClient.shared.request(
                 endpoint: .connect,
                 body: connectRequest
@@ -277,12 +284,38 @@ class VPNService: ObservableObject {
             connectionState = .disconnected
             self.error = vpnError
             throw vpnError
+        } catch let nsError as NSError where nsError.domain == NEVPNErrorDomain {
+            LogService.shared.logService("Connect failed: NEVPNError \(nsError.code) — \(nsError.localizedDescription)", level: .error)
+            connectionState = .disconnected
+            let vpnError = Self.mapNEVPNError(nsError)
+            self.error = vpnError
+            throw vpnError
         } catch {
             LogService.shared.logService("Connect failed: \(error.localizedDescription)", level: .error)
             connectionState = .disconnected
             let vpnError = VPNError.connectionFailed(error.localizedDescription)
             self.error = vpnError
             throw vpnError
+        }
+    }
+
+    /// Maps a raw NEVPNError into a user-facing VPNError. NEVPNError.configurationDisabled (code 2)
+    /// is the opaque "operation couldn't be completed" error iOS returns when startVPNTunnel
+    /// can't proceed — in practice this fires when another VPN app's configuration is active,
+    /// since iOS disables all other VPN configurations while one is connected.
+    private static func mapNEVPNError(_ nsError: NSError) -> VPNError {
+        guard let code = NEVPNError.Code(rawValue: nsError.code) else {
+            return .connectionFailed(nsError.localizedDescription)
+        }
+        switch code {
+        case .configurationDisabled:
+            return .anotherVPNActive
+        case .configurationInvalid, .configurationStale, .configurationUnknown:
+            return .invalidConfiguration
+        case .connectionFailed, .configurationReadWriteFailed:
+            return .connectionFailed(nsError.localizedDescription)
+        @unknown default:
+            return .connectionFailed(nsError.localizedDescription)
         }
     }
 
@@ -417,7 +450,9 @@ class VPNService: ObservableObject {
                     serverId: serverId,
                     killSwitchEnabled: lastKillSwitchEnabled,
                     ipv6Enabled: lastIPv6Enabled,
-                    lanAccessEnabled: lastLANAccessEnabled
+                    lanAccessEnabled: lastLANAccessEnabled,
+                    blockAdsEnabled: lastBlockAdsEnabled,
+                    blockMalwareEnabled: lastBlockMalwareEnabled
                 )
             } catch {
                 // Will retry via updateConnectionState when disconnect is detected again

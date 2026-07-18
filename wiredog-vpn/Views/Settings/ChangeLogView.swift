@@ -9,6 +9,14 @@ struct ChangeLogEntry: Identifiable {
 
 private let changeLog: [ChangeLogEntry] = [
     ChangeLogEntry(
+        version: "1.5.0",
+        date: "July 2026",
+        changes: [
+            "Togglable DNS filters — Block Ads and Block Malware can now be switched on or off independently in Settings.",
+            "Clearer VPN conflict errors — Connecting while another VPN configuration is active now shows a specific message telling you to select WireDog VPN in Settings, instead of a generic system error.",
+        ]
+    ),
+    ChangeLogEntry(
         version: "1.4.0",
         date: "June 2026",
         changes: [

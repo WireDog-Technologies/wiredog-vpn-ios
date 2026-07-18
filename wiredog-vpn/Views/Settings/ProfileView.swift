@@ -6,7 +6,9 @@ struct ProfileView: View {
     @Environment(\.presentationMode) var presentationMode
     @Environment(\.openURL) private var openURL
     @State private var showLogoutAlert = false
+    @State private var showLogoutBlockedAlert = false
     @State private var showDeleteAlert = false
+    @State private var showDeleteBlockedAlert = false
     @State private var showDeleteConfirm = false
     @State private var deleteError: String?
     @State private var showDeleteError = false
@@ -230,7 +232,13 @@ struct ProfileView: View {
                     Spacer(minLength: 16)
 
                     // Sign Out Button
-                    Button(action: { showLogoutAlert = true }) {
+                    Button(action: {
+                        if vpnManager.connectionState == .disconnected {
+                            showLogoutAlert = true
+                        } else {
+                            showLogoutBlockedAlert = true
+                        }
+                    }) {
                         HStack {
                             if authService.isLoading {
                                 ProgressView()
@@ -258,7 +266,13 @@ struct ProfileView: View {
                     Spacer(minLength: 16)
 
                     // Delete Account Button
-                    Button(action: { showDeleteAlert = true }) {
+                    Button(action: {
+                        if vpnManager.connectionState == .disconnected {
+                            showDeleteAlert = true
+                        } else {
+                            showDeleteBlockedAlert = true
+                        }
+                    }) {
                         HStack {
                             Image(systemName: "trash.fill")
                                 .font(.system(size: 16))
@@ -288,16 +302,17 @@ struct ProfileView: View {
             Button("Cancel", role: .cancel) {}
             Button("Sign Out", role: .destructive) {
                 Task {
-                    // Disconnect VPN if connected
-                    if vpnManager.connectionState == .connected {
-                        vpnManager.disconnect()
-                    }
                     await authService.logout()
                     presentationMode.wrappedValue.dismiss()
                 }
             }
         } message: {
             Text("Are you sure you want to sign out?")
+        }
+        .alert("Disconnect Required", isPresented: $showLogoutBlockedAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Please disconnect the VPN before signing out.")
         }
         .alert("Delete Account", isPresented: $showDeleteAlert) {
             Button("Cancel", role: .cancel) {}
@@ -311,11 +326,6 @@ struct ProfileView: View {
             Button("Cancel", role: .cancel) {}
             Button("Delete My Account", role: .destructive) {
                 Task {
-                    // Disconnect VPN if connected
-                    if vpnManager.connectionState == .connected {
-                        vpnManager.disconnect()
-                    }
-
                     do {
                         try await authService.deleteAccount()
                         presentationMode.wrappedValue.dismiss()
@@ -332,6 +342,11 @@ struct ProfileView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(deleteError ?? "An error occurred. Please try again.")
+        }
+        .alert("Disconnect Required", isPresented: $showDeleteBlockedAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Please disconnect the VPN before deleting your account.")
         }
     }
 }

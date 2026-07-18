@@ -23,6 +23,7 @@ class VPNManager: ObservableObject {
     @Published var isConnectionHealthy = true
     @Published var errorMessage: String?
     @Published var needsSubscription: Bool = false
+    @Published var showReviewPrompt: Bool = false
     private(set) var pendingServer: Server? = nil
 
     // MARK: - Services
@@ -39,6 +40,7 @@ class VPNManager: ObservableObject {
     private static let lastConnectedServerKey = "lastConnectedServerId"
     private static let userManuallyDisconnectedKey = "userManuallyDisconnected"
     private static let connectedAtKey = "vpnConnectedAt"
+    private var hasRecordedReviewPromptForCurrentConnection = false
 
     // Network monitoring for auto-connect triggers
     private var pathMonitor: NWPathMonitor?
@@ -102,8 +104,15 @@ class VPNManager: ObservableObject {
                 if state == .connected {
                     let savedStart = UserDefaults.standard.object(forKey: Self.connectedAtKey) as? Date
                     self.startTimer(restoreFrom: savedStart)
+                    if !self.hasRecordedReviewPromptForCurrentConnection {
+                        self.hasRecordedReviewPromptForCurrentConnection = true
+                        if ReviewPromptService.shared.recordSuccessfulConnection() {
+                            self.showReviewPrompt = true
+                        }
+                    }
                     Task { await self.fetchPublicIPOnConnect() }
                 } else if state == .disconnected && !isReconnecting {
+                    self.hasRecordedReviewPromptForCurrentConnection = false
                     self.stopTimer()
                     self.connectionDuration = 0
                     self.resetStats()
@@ -350,7 +359,9 @@ class VPNManager: ObservableObject {
                     serverId: server.id,
                     killSwitchEnabled: settings.isKillSwitchEnabled,
                     ipv6Enabled: settings.isIPv6Enabled,
-                    lanAccessEnabled: settings.isLANAccessEnabled
+                    lanAccessEnabled: settings.isLANAccessEnabled,
+                    blockAdsEnabled: settings.isBlockAdsEnabled,
+                    blockMalwareEnabled: settings.isBlockMalwareEnabled
                 )
                 addRecentServer(server)
                 UserDefaults.standard.set(server.id, forKey: Self.lastConnectedServerKey)

@@ -1,9 +1,11 @@
 import SwiftUI
+import StoreKit
 
 struct MainTabView: View {
     @ObservedObject var vpnManager: VPNManager
     @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab = 1
+    @State private var showReportIssueFromReviewPrompt = false
 
     var body: some View {
         ZStack {
@@ -42,6 +44,28 @@ struct MainTabView: View {
             vpnManager.handleAppForeground()
             await vpnManager.attemptAutoConnect()
         }
+        .sheet(isPresented: $vpnManager.showReviewPrompt) {
+            ReviewPromptView(
+                onPositive: {
+                    ReviewPromptService.shared.recordPositiveResponse()
+                    requestAppStoreReview()
+                },
+                onNegative: {
+                    showReportIssueFromReviewPrompt = true
+                }
+            )
+        }
+        .sheet(isPresented: $showReportIssueFromReviewPrompt) {
+            ReportIssueView(vpnManager: vpnManager)
+        }
+    }
+
+    private func requestAppStoreReview() {
+        guard let scene = UIApplication.shared.connectedScenes
+            .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene else {
+            return
+        }
+        SKStoreReviewController.requestReview(in: scene)
     }
 
     private func configureTabBar() {

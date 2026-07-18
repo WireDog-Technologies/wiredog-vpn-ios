@@ -47,10 +47,14 @@ struct APIServer: Decodable, Identifiable {
 struct ConnectRequest: Encodable {
     let serverId: String
     let localMode: Bool
+    let blockAds: Bool
+    let blockMalware: Bool
 
-    init(serverId: String, localMode: Bool = false) {
+    init(serverId: String, localMode: Bool = false, blockAds: Bool = true, blockMalware: Bool = true) {
         self.serverId = serverId
         self.localMode = localMode
+        self.blockAds = blockAds
+        self.blockMalware = blockMalware
     }
 }
 

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct ConnectView: View {
     @ObservedObject var vpnManager: VPNManager

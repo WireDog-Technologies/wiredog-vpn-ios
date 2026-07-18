@@ -11,7 +11,6 @@
 		306D21992F1416E700F0891C /* NetworkExtension.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 306D21982F1416E700F0891C /* NetworkExtension.framework */; };
 		306D21A12F1416E700F0891C /* WireDogTunnel.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 306D21962F1416E700F0891C /* WireDogTunnel.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		30B58ECA2F93EB3900D957B0 /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 30B58EC92F93EB3900D957B0 /* StoreKit.framework */; };
-		30E993312F834E6500D237EA /* Config.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 30E993302F834E6500D237EA /* Config.xcconfig */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -60,7 +59,8 @@
 		307BA7A32F130955007DB552 /* wiredog-vpnUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "wiredog-vpnUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		30B58EC92F93EB3900D957B0 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
 		30B58ECB2F93EBAF00D957B0 /* WireDog.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = WireDog.storekit; sourceTree = "<group>"; };
-		30E993302F834E6500D237EA /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
+		30E993322F834E6500D237EA /* Config-Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Config-Debug.xcconfig"; sourceTree = "<group>"; };
+		30E993342F834E6500D237EA /* Config-Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Config-Release.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -162,7 +162,8 @@
 				306D219A2F1416E700F0891C /* WireDogTunnel */,
 				306D21972F1416E700F0891C /* Frameworks */,
 				307BA78A2F130953007DB552 /* Products */,
-				30E993302F834E6500D237EA /* Config.xcconfig */,
+				30E993322F834E6500D237EA /* Config-Debug.xcconfig */,
+				30E993342F834E6500D237EA /* Config-Release.xcconfig */,
 			);
 			sourceTree = "<group>";
 		};
@@ -325,7 +326,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				30E993312F834E6500D237EA /* Config.xcconfig in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -408,7 +408,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = WireDogTunnel/WireDogTunnelDebug.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 11;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WireDogTunnel/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = WireDogTunnel;
@@ -423,7 +423,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/WireDogTunnel/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.5.0;
 				OTHER_LDFLAGS = "$(inherited)";
 				"OTHER_LDFLAGS[sdk=iphoneos*]" = (
 					"$(inherited)",
@@ -448,7 +448,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = WireDogTunnel/WireDogTunnel.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 11;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WireDogTunnel/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = WireDogTunnel;
@@ -463,7 +463,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/WireDogTunnel/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.5.0;
 				OTHER_LDFLAGS = "$(inherited)";
 				"OTHER_LDFLAGS[sdk=iphoneos*]" = (
 					"$(inherited)",
@@ -485,7 +485,7 @@
 		};
 		307BA7AB2F130955007DB552 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 30E993302F834E6500D237EA /* Config.xcconfig */;
+			baseConfigurationReference = 30E993322F834E6500D237EA /* Config-Debug.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = NO;
@@ -551,7 +551,7 @@
 		};
 		307BA7AC2F130955007DB552 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 30E993302F834E6500D237EA /* Config.xcconfig */;
+			baseConfigurationReference = 30E993342F834E6500D237EA /* Config-Release.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = NO;
@@ -610,13 +610,13 @@
 		};
 		307BA7AE2F130955007DB552 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 30E993302F834E6500D237EA /* Config.xcconfig */;
+			baseConfigurationReference = 30E993322F834E6500D237EA /* Config-Debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "wiredog-vpn/wiredog-vpnDebug.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEVELOPMENT_ASSET_PATHS = "\"wiredog-vpn/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -636,7 +636,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.4.0;
+				MARKETING_VERSION = 1.5.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.wiredog.vpn;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -655,13 +655,13 @@
 		};
 		307BA7AF2F130955007DB552 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 30E993302F834E6500D237EA /* Config.xcconfig */;
+			baseConfigurationReference = 30E993342F834E6500D237EA /* Config-Release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "wiredog-vpn/wiredog-vpn.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEVELOPMENT_ASSET_PATHS = "\"wiredog-vpn/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -681,7 +681,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.4.0;
+				MARKETING_VERSION = 1.5.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.wiredog.vpn;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

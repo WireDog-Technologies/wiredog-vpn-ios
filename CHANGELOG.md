@@ -4,6 +4,18 @@ All notable changes to WireDog VPN for iOS are documented here.
 
 ---
 
+## [1.5.0] — 2026-07-17
+
+### Added
+- **Togglable DNS filters** — Block Ads and Block Malware can now be enabled or disabled independently in Settings, rather than being bundled together.
+
+### Fixed
+- **Conflicting VPN configuration error messaging** — Connecting while another VPN app's configuration is active previously surfaced a raw system error (`NEVPNErrorDomain error 2`). Now shows a clear, actionable message: "Another VPN configuration is selected. Go to Settings > VPN, and select WireDog VPN."
+- **iOS update-policy version check** — The app-update version comparison was parsing only the major digit of the marketing version string (e.g. "1.4.0" → 1), so it could never distinguish between builds sharing a major version. Now compares `CFBundleVersion` (build number) directly, matching Android's `versionCode` convention.
+- **Tunnel extension bundle version mismatch** — WireDogTunnel's `CURRENT_PROJECT_VERSION` was out of sync with the parent app, triggering an Xcode validation warning on every build. Now kept in lockstep with the app's build number.
+
+---
+
 ## [1.4.0] — 2026-06-07
 
 ### Added

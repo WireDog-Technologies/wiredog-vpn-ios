@@ -73,8 +73,8 @@ class AppConfigService: ObservableObject {
             return .maintenance
         }
 
-        let currentVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
-        let currentVersionInt = parseVersionToInt(currentVersion)
+        let currentVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
+        let currentVersionInt = Int(currentVersion) ?? 1
 
         if iosConfig.forceUpdate {
             let message = iosConfig.updateMessage ?? "A new version is available. Please update to continue."
@@ -97,15 +97,6 @@ class AppConfigService: ObservableObject {
         LogService.shared.logApp("[AppConfig] All checks passed: version \(currentVersion) (\(currentVersionInt)), maintenance disabled", level: .debug)
         return .none
     }
-
-    // MARK: - Version Parsing
-
-    private func parseVersionToInt(_ version: String) -> Int {
-        // Parse "X.Y.Z" format, take major version (X) as integer
-        let components = version.split(separator: ".").compactMap { Int($0) }
-        return components.first ?? 1
-    }
-
 
     // MARK: - Cache
 
