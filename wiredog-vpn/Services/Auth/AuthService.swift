@@ -387,6 +387,9 @@ class AuthService: ObservableObject {
 
         isAuthenticated = true
         LogService.shared.logApp("[Auth] Session token found, restoring session", level: .debug)
+        // App launch/relaunch is a common place to land on a stale pooled connection from
+        // before a network change — reset first so this fetch doesn't fail for that reason.
+        await apiClient.resetConnections()
         do {
             try await fetchUserProfile()
             LogService.shared.logApp("[Auth] Session restored successfully")

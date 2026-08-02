@@ -240,7 +240,7 @@ struct AuthServiceTests {
         AuthServiceMockURLProtocol.configure(data: "{}".data(using: .utf8)!, statusCode: 400)
 
         await #expect(throws: AuthError.self) {
-            try await service.registerStandard(email: "test@test.com", password: "weak", referralCode: nil)
+            try await service.registerStandard(email: "test@test.com", password: "weak")
         }
     }
 

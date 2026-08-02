@@ -4,6 +4,27 @@ All notable changes to WireDog VPN for iOS are documented here.
 
 ---
 
+## [1.6.0] — 2026-08-01
+
+### Added
+- **Live connection-status map markers** — Server markers on the map now reflect real-time connection state: green while connected, gold while connecting/reconnecting/disconnecting, red when idle. Previously markers only showed a static "selected" highlight regardless of tunnel state.
+- **Cancel an in-progress connection** — Tapping Connect again while connecting or reconnecting now cancels the attempt, instead of leaving no way to back out. Surfaces as a new `VPNError.cancelled` case with no error alert, since it's user-initiated.
+- **Live server switching** — Tapping a different server while already connected or connecting now automatically disconnects the current tunnel and connects to the new selection, instead of just updating the highlighted server and requiring a manual disconnect first.
+
+### Changed
+- **Reworked connect/disconnect session lifecycle** — Session cleanup is now tracked more reliably: a leaked session (e.g. connect failing after the backend already incremented the device counter) is cleaned up immediately, pending `/disconnect` calls that failed to confirm (e.g. due to lost connectivity) are persisted and retried on next launch/foreground, and reconnect backoff timing is now configurable internally rather than fixed.
+- **Loading state during connection transitions** — The public IP and location text now show "Loading..." while connecting, disconnecting, or reconnecting, instead of briefly displaying stale or misleading values from before the transition.
+- **Smarter auto-reconnect abort** — Auto-reconnect now stops immediately when the failure is "another VPN app's configuration is active," instead of burning through all retry attempts against a system VPN slot it can't win back on its own.
+
+### Fixed
+- **Connection timer resetting after force-quit** — Reopening the app while still connected showed the timer restarting from 0 instead of continuing from the original connection time. A spurious initial state event was clearing the persisted start time before the real tunnel status was known; that event is now ignored.
+- **Inaccurate location shown after force-quit → disconnect** — The displayed location wasn't refreshed after disconnecting, so it could continue showing the VPN server's exit location captured at launch instead of the user's real location.
+- **Selected server not restored after force-quitting while connected** — Relaunching the app while still connected could default the server selection to the first server in the list instead of the one actually connected, causing the wrong server name to display.
+- **False "Unable to verify subscription status" errors** — The pre-connect profile refresh could fail on a stale pooled network connection left over from a recent network change (e.g. relaunching after switching Wi-Fi/cellular), incorrectly blocking connection even with a valid subscription. Network connections are now reset before this check.
+- **Public IP not updating reliably after connect/disconnect** — IP lookups could keep reusing a pooled socket opened over the previous network interface, silently returning the pre-change IP. Pooled connections are now reset after every connect and disconnect.
+
+---
+
 ## [1.5.0] — 2026-07-17
 
 ### Added

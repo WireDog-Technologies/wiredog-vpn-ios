@@ -20,6 +20,12 @@ class VPNManager: ObservableObject {
     @Published var originalIP: String?
     @Published var currentLocation: String?
     @Published var isLoading = false
+    @Published var isFetchingNetworkInfo = false
+    /// True while a server switch is tearing down the old tunnel before bringing up the new
+    /// one. Lets the UI (e.g. the map marker) treat that whole disconnect-old → connect-new
+    /// sequence as one continuous "in progress" state instead of flickering through the
+    /// intermediate connected/disconnected values `connectionState` genuinely passes through.
+    @Published private(set) var isSwitchingServer = false
     @Published var isConnectionHealthy = true
     @Published var errorMessage: String?
     @Published var needsSubscription: Bool = false
@@ -41,6 +47,7 @@ class VPNManager: ObservableObject {
     private static let userManuallyDisconnectedKey = "userManuallyDisconnected"
     private static let connectedAtKey = "vpnConnectedAt"
     private var hasRecordedReviewPromptForCurrentConnection = false
+    private var connectTask: Task<Void, Never>?
 
     // Network monitoring for auto-connect triggers
     private var pathMonitor: NWPathMonitor?
@@ -91,6 +98,7 @@ class VPNManager: ObservableObject {
         // Bind VPN service connection state
         vpnService.$connectionState
             .combineLatest(vpnService.$isReconnecting)
+            .dropFirst()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] state, isReconnecting in
                 guard let self = self else { return }
@@ -210,7 +218,12 @@ class VPNManager: ObservableObject {
             updateRecommendedServers()
 
             if selectedServer == nil {
-                selectedServer = availableServers.first
+                if let lastServerId = UserDefaults.standard.string(forKey: Self.lastConnectedServerKey),
+                   let lastServer = availableServers.first(where: { $0.id == lastServerId }) {
+                    selectedServer = lastServer
+                } else {
+                    selectedServer = availableServers.first
+                }
             }
 
             LogService.shared.logApp("[VPNManager] Servers loaded from API (\(availableServers.count) servers)")
@@ -336,7 +349,7 @@ class VPNManager: ObservableObject {
         errorMessage = nil
         UserDefaults.standard.set(false, forKey: Self.userManuallyDisconnectedKey)
 
-        Task {
+        connectTask = Task {
             do {
                 // Check app config before connecting
                 await AppConfigService.shared.checkAppConfig()
@@ -365,6 +378,9 @@ class VPNManager: ObservableObject {
                 )
                 addRecentServer(server)
                 UserDefaults.standard.set(server.id, forKey: Self.lastConnectedServerKey)
+            } catch VPNError.cancelled {
+                // User-initiated cancel (tap-again-to-cancel) — expected, nothing to surface.
+                LogService.shared.logApp("[VPNManager] Connect cancelled")
             } catch let apiError as APIError {
                 if case .unauthorized = apiError {
                     authService.handleUnauthorized()
@@ -390,13 +406,31 @@ class VPNManager: ObservableObject {
         }
     }
 
+    /// Cancels an in-flight connect attempt — covers both a first attempt still awaiting the
+    /// backend/tunnel, and an in-progress auto-reconnect loop (which outlives connectTask, since
+    /// its retries are scheduled internally by VPNService rather than by this Task).
+    func cancelConnect() {
+        guard connectionState == .connecting || connectionState == .reconnecting else { return }
+
+        LogService.shared.logApp("[VPNManager] Cancel connect requested")
+        UserDefaults.standard.set(true, forKey: Self.userManuallyDisconnectedKey)
+
+        connectTask?.cancel()
+        vpnService.cancelConnect()
+    }
+
     func toggleConnection() {
-        if connectionState == .connected {
+        switch connectionState {
+        case .connected:
             disconnect()
-        } else if connectionState == .disconnected {
+        case .disconnected:
             if let server = selectedServer {
                 connect(to: server)
             }
+        case .connecting, .reconnecting:
+            cancelConnect()
+        case .disconnecting:
+            break // nothing to do — can't cancel a disconnect already in progress
         }
     }
 
@@ -486,19 +520,26 @@ class VPNManager: ObservableObject {
     }
 
     private func fetchPublicIPOnConnect() async {
+        isFetchingNetworkInfo = true
         ipService.clearGeoCache()
+        await ipService.resetConnections()
         let newIP = await ipService.getPublicIPSafe()
         publicIP = newIP
+        isFetchingNetworkInfo = false
         LogService.shared.logApp("[VPNManager] Connected - VPN IP assigned")
     }
 
     private func fetchPublicIPOnDisconnect() async {
+        isFetchingNetworkInfo = true
         ipService.clearGeoCache()
+        await ipService.resetConnections()
         let currentIP = await ipService.getPublicIPSafe()
         publicIP = currentIP
         if let ip = currentIP {
             originalIP = ip
         }
+        currentLocation = await ipService.getGeoLocation()
+        isFetchingNetworkInfo = false
         LogService.shared.logApp("[VPNManager] Disconnected - original IP refreshed")
     }
 
@@ -580,7 +621,72 @@ class VPNManager: ObservableObject {
     // MARK: - Server Selection
 
     func selectServer(_ server: Server) {
+        let previousServer = selectedServer
         selectedServer = server
+        let isSameServer = server.id == previousServer?.id
+
+        switch connectionState {
+        case .connected, .connecting, .reconnecting:
+            // Already connected/connecting to this exact server — nothing to move.
+            guard !isSameServer else { return }
+            switchServer(to: server)
+        case .disconnecting:
+            // Mid-teardown from something else — just update the selection and let it settle.
+            return
+        case .disconnected:
+            // Re-tapping the already-selected server while idle reads as "connect to this."
+            // Picking a *different* server just updates the selection, same as before — the
+            // user still has to hit Connect for that one.
+            guard isSameServer else { return }
+            connect(to: server)
+        }
+    }
+
+    private func switchServer(to server: Server) {
+        isSwitchingServer = true
+
+        switch connectionState {
+        case .connected:
+            disconnect()
+        case .connecting, .reconnecting:
+            cancelConnect()
+        default:
+            break
+        }
+
+        connectTask?.cancel()
+        connectTask = Task { [weak self] in
+            guard let self else { return }
+            defer { self.isSwitchingServer = false }
+            let didDisconnect = await self.waitForDisconnected()
+            guard !Task.isCancelled else { return }
+            guard didDisconnect else {
+                self.errorMessage = "Unable to switch servers. Please try again."
+                return
+            }
+            self.connect(to: server)
+        }
+    }
+
+    /// Waits for `connectionState` to settle at `.disconnected` (e.g. after a server-switch
+    /// disconnect), bounded by a timeout so a stuck tunnel teardown can't hang forever.
+    private func waitForDisconnected(timeout: TimeInterval = 8) async -> Bool {
+        await withTaskGroup(of: Bool.self) { group in
+            group.addTask { [weak self] in
+                guard let self else { return false }
+                for await state in await self.$connectionState.values {
+                    if state == .disconnected { return true }
+                }
+                return false
+            }
+            group.addTask {
+                try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+                return false
+            }
+            let result = await group.next() ?? false
+            group.cancelAll()
+            return result
+        }
     }
 
     func selectServerFromMap(_ serverId: String) {

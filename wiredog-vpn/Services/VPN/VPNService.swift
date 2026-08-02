@@ -12,6 +12,7 @@ enum VPNError: LocalizedError {
     case subscriptionExpired
     case notAuthenticated
     case anotherVPNActive
+    case cancelled
 
     var errorDescription: String? {
         switch self {
@@ -33,6 +34,8 @@ enum VPNError: LocalizedError {
             return "You are not authenticated. Please log in to use the VPN."
         case .anotherVPNActive:
             return "Another VPN configuration is selected. Go to Settings > VPN, and select WireDog VPN."
+        case .cancelled:
+            return "Connection cancelled"
         }
     }
 }
@@ -49,12 +52,12 @@ class VPNService: ObservableObject {
     @Published var isReconnecting = false
     @Published var isConnectionHealthy = true
 
-    private var vpnManager: NETunnelProviderManager?
+    private var vpnManager: VPNTunnelManaging?
     private var statusObserver: NSObjectProtocol?
     private var statisticsTimer: Timer?
     private var userInitiatedDisconnect = false
     private var reconnectAttempts = 0
-    private let maxReconnectAttempts = 10
+    var maxReconnectAttempts = 10
     private var reconnectTask: Task<Void, Never>?
     private var lastKillSwitchEnabled = false
     private var lastIPv6Enabled = true
@@ -64,15 +67,42 @@ class VPNService: ObservableObject {
     private var lastSuccessfulHandshake: Date?
     private var lastStatsResponse: Date?
     private var foregroundedAt: Date?
+    private var connectedSince: Date?
     // WireGuard renegotiates session keys every 120s (REKEY_AFTER_TIME). last_handshake_time_sec is only
     // updated on a full cryptographic handshake — NOT on keepalive packets. A healthy connection can
     // legitimately have a handshake up to ~180s old, so the threshold must exceed that.
     private static let staleHandshakeThreshold: TimeInterval = 190
     private static let foregroundGracePeriod: TimeInterval = 8
+    // A connection that drops before staying up this long never really established — clean up its
+    // backend session slot immediately instead of blindly reconnecting and leaking another increment.
+    static let defaultMinimumStableConnectionDuration: TimeInterval = 30
+    var minimumStableConnectionDuration: TimeInterval = VPNService.defaultMinimumStableConnectionDuration
+    // Exponential backoff base/cap for auto-reconnect: 1s, 2s, 4s, 8s, 15s max by default.
+    var reconnectBaseDelay: TimeInterval = 1.0
+    var reconnectMaxDelay: TimeInterval = 15.0
+    // Delay before notifying the backend of an orphaned/dead session, to give the tunnel time to
+    // fully stop. Overridable so tests don't have to wait on it.
+    var disconnectNotifyDelayNanoseconds: UInt64 = 1_500_000_000
+    private(set) var lastCleanupTask: Task<Void, Never>?
 
-    private init() {
-        Task {
-            await loadVPNManager()
+    private let apiClient: APIClient
+    private let authService: AuthService
+    private let tunnelManagerProvider: VPNTunnelManagerProviding
+
+    init(
+        apiClient: APIClient = .shared,
+        authService: AuthService = .shared,
+        tunnelManagerProvider: VPNTunnelManagerProviding = SystemVPNTunnelManagerProvider(),
+        autoLoadOnInit: Bool = true
+    ) {
+        self.apiClient = apiClient
+        self.authService = authService
+        self.tunnelManagerProvider = tunnelManagerProvider
+
+        if autoLoadOnInit {
+            Task {
+                await loadVPNManager()
+            }
         }
 
         // Fires before the run loop resumes timers — guarantees isConnectionHealthy = true
@@ -82,7 +112,14 @@ class VPNService: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            guard let self, self.connectionState == .connected else { return }
+            guard let self else { return }
+
+            // Retry any /disconnect calls that never confirmed while backgrounded — e.g. the app
+            // lost connectivity mid-cleanup and the user reopened the app instead of relaunching it
+            // (loadVPNManager()'s cold-start retry wouldn't otherwise fire in that case).
+            self.retryPendingDisconnects()
+
+            guard self.connectionState == .connected else { return }
             self.isConnectionHealthy = true
             self.foregroundedAt = Date()
         }
@@ -90,9 +127,9 @@ class VPNService: ObservableObject {
 
     // MARK: - VPN Manager Setup
 
-    private func loadVPNManager() async {
+    func loadVPNManager() async {
         do {
-            let managers = try await NETunnelProviderManager.loadAllFromPreferences()
+            let managers = try await tunnelManagerProvider.loadAllFromPreferences()
 
             // Remove any stale profiles that don't match our bundle ID
             let bundleId = Config.tunnelBundleIdentifier
@@ -121,22 +158,21 @@ class VPNService: ObservableObject {
                 } else {
                     // Tunnel is gone — call /disconnect to decrement the backend counter.
                     UserDefaults.standard.removeObject(forKey: "vpn_session_id")
-                    LogService.shared.logService("VPN: Crash recovery — calling disconnect for stale session")
-                    Task {
-                        _ = try? await APIClient.shared.request(
-                            endpoint: .disconnect,
-                            body: DisconnectRequest(sessionId: storedSessionId)
-                        ) as DisconnectResponse
-                    }
+                    cleanupOrphanedSession(storedSessionId, reason: "crash recovery — stale session")
                 }
             }
+
+            // Retry any /disconnect calls that were owed but never confirmed — e.g. the app lost
+            // connectivity right as a previous cleanupOrphanedSession() call went out. Independent
+            // of the crash-recovery check above, which only covers the single current session.
+            retryPendingDisconnects()
         } catch {
             LogService.shared.logService("VPN manager load failed: \(error)", level: .error)
         }
     }
 
-    private func createNewVPNManager() -> NETunnelProviderManager {
-        let manager = NETunnelProviderManager()
+    private func createNewVPNManager() -> VPNTunnelManaging {
+        let manager = tunnelManagerProvider.makeNew()
 
         let protocolConfig = NETunnelProviderProtocol()
         protocolConfig.providerBundleIdentifier = Config.tunnelBundleIdentifier
@@ -151,7 +187,7 @@ class VPNService: ObservableObject {
 
     // MARK: - Kill Switch Configuration
 
-    private func configureKillSwitch(enabled: Bool, lanAccessEnabled: Bool = true, for manager: NETunnelProviderManager) {
+    private func configureKillSwitch(enabled: Bool, lanAccessEnabled: Bool = true, for manager: VPNTunnelManaging) {
         guard let protocolConfig = manager.protocolConfiguration as? NETunnelProviderProtocol else {
             return
         }
@@ -192,13 +228,16 @@ class VPNService: ObservableObject {
         }
 
         // Verify subscription before attempting to connect
-        let authService = AuthService.shared
         guard authService.isAuthenticated else {
             LogService.shared.logService("Connect failed: not authenticated", level: .error)
             throw VPNError.notAuthenticated
         }
 
-        // Refresh user profile to ensure subscription data is current
+        // Refresh user profile to ensure subscription data is current. Reset pooled
+        // connections first — a recent network change (e.g. app relaunch after switching
+        // networks) can otherwise leave this request stuck on a dead socket and fail here
+        // even though the session/subscription are actually fine.
+        await apiClient.resetConnections()
         do {
             try await authService.fetchUserProfile()
         } catch {
@@ -222,6 +261,7 @@ class VPNService: ObservableObject {
         isConnectionHealthy = true
         lastSuccessfulHandshake = nil
         lastStatsResponse = nil
+        connectedSince = nil
         if !isReconnecting {
             userInitiatedDisconnect = false
             reconnectAttempts = 0
@@ -235,7 +275,7 @@ class VPNService: ObservableObject {
         do {
             // Phase 1: Fetch WireGuard configuration from API
             let connectRequest = ConnectRequest(serverId: serverId, blockAds: blockAdsEnabled, blockMalware: blockMalwareEnabled)
-            let response: ConnectResponse = try await APIClient.shared.request(
+            let response: ConnectResponse = try await apiClient.request(
                 endpoint: .connect,
                 body: connectRequest
             )
@@ -271,9 +311,20 @@ class VPNService: ObservableObject {
             try await manager.saveToPreferences()
             try await manager.loadFromPreferences()
 
+            // A cancel (tap-again-to-cancel) may have arrived while awaiting the calls above —
+            // check before starting the tunnel, since startVPNTunnel() itself isn't cancellable.
+            try Task.checkCancellation()
+
             // Start the tunnel
             let options: [String: NSObject] = ["wgConfig": wgConfig as NSObject]
-            try manager.connection.startVPNTunnel(options: options)
+            try manager.vpnConnection.startVPNTunnel(options: options)
+
+            // The tunnel just started — if a cancel landed in the narrow window right around this
+            // call, tear it back down immediately rather than leaving an untracked live tunnel.
+            if Task.isCancelled {
+                manager.vpnConnection.stopVPNTunnel()
+                throw CancellationError()
+            }
 
             // Start statistics polling
             startStatisticsPolling()
@@ -281,21 +332,57 @@ class VPNService: ObservableObject {
 
         } catch let vpnError as VPNError {
             LogService.shared.logService("Connect failed: \(vpnError.localizedDescription ?? "unknown error")", level: .error)
+            cleanupLeakedSessionIfNeeded()
             connectionState = .disconnected
             self.error = vpnError
             throw vpnError
         } catch let nsError as NSError where nsError.domain == NEVPNErrorDomain {
             LogService.shared.logService("Connect failed: NEVPNError \(nsError.code) — \(nsError.localizedDescription)", level: .error)
+            cleanupLeakedSessionIfNeeded()
             connectionState = .disconnected
             let vpnError = Self.mapNEVPNError(nsError)
             self.error = vpnError
             throw vpnError
         } catch {
-            LogService.shared.logService("Connect failed: \(error.localizedDescription)", level: .error)
+            cleanupLeakedSessionIfNeeded()
             connectionState = .disconnected
+            if Self.isCancellation(error) {
+                // User-initiated cancel (tap-again-to-cancel) — expected, not a failure.
+                // Don't publish `self.error`, so no error alert surfaces for it.
+                LogService.shared.logService("Connect cancelled")
+                throw VPNError.cancelled
+            }
+            LogService.shared.logService("Connect failed: \(error.localizedDescription)", level: .error)
             let vpnError = VPNError.connectionFailed(error.localizedDescription)
             self.error = vpnError
             throw vpnError
+        }
+    }
+
+    /// True if `error` represents a cancelled operation — either a native `CancellationError`
+    /// (from `Task.checkCancellation()`/our own explicit throw) or a cancelled network request
+    /// (`URLSession` surfaces Task cancellation as `URLError.cancelled`, which `APIClient` wraps
+    /// as `APIError.networkError`).
+    private static func isCancellation(_ error: Error) -> Bool {
+        if error is CancellationError { return true }
+        if let urlError = error as? URLError, urlError.code == .cancelled { return true }
+        if let apiError = error as? APIError,
+           case .networkError(let underlying) = apiError,
+           let urlError = underlying as? URLError, urlError.code == .cancelled {
+            return true
+        }
+        return false
+    }
+
+    /// If connect() obtained a sessionId (and thus incremented the backend's device counter) before
+    /// failing, notify the backend so the counter doesn't leak. No-op if we failed before that point.
+    func cleanupLeakedSessionIfNeeded() {
+        guard let leaked = self.sessionId else { return }
+        cleanupOrphanedSession(leaked, reason: "connect() threw after sessionId obtained")
+        self.sessionId = nil
+        UserDefaults.standard.removeObject(forKey: "vpn_session_id")
+        if !isReconnecting {
+            self.currentServerId = nil
         }
     }
 
@@ -319,6 +406,23 @@ class VPNService: ObservableObject {
         }
     }
 
+    /// Cancels an in-progress auto-reconnect loop (backoff wait or an active retry attempt).
+    /// No-ops if not currently reconnecting — an in-flight *first* connect attempt is cancelled
+    /// by the caller cancelling its own wrapping Task instead, since connect() is cancellation-aware.
+    /// If a session was already claimed by the most recent retry attempt, disconnects it so the
+    /// counter stays net-zero even if this fires mid-retry rather than during the backoff wait.
+    func cancelConnect() {
+        guard isReconnecting else { return }
+        userInitiatedDisconnect = true
+        reconnectTask?.cancel()
+        reconnectTask = nil
+        isReconnecting = false
+        reconnectAttempts = 0
+        if sessionId != nil {
+            Task { await disconnect() }
+        }
+    }
+
     func disconnect() async {
         guard connectionState == .connected || connectionState == .connecting else { return }
 
@@ -336,6 +440,7 @@ class VPNService: ObservableObject {
         self.sessionId = nil
         UserDefaults.standard.removeObject(forKey: "vpn_session_id")
         self.currentServerId = nil
+        self.connectedSince = nil
 
         // Disable kill switch before stopping tunnel so the user has internet while disconnected.
         // It will be re-enabled on the next connect if the setting is still on.
@@ -346,20 +451,81 @@ class VPNService: ObservableObject {
         }
 
         // Stop VPN tunnel
-        vpnManager?.connection.stopVPNTunnel()
+        vpnManager?.vpnConnection.stopVPNTunnel()
         LogService.shared.logService("VPN disconnecting")
 
         // Notify backend after tunnel stops — non-critical, best-effort
-        if let sessionId = capturedSessionId {
-            Task.detached {
-                try? await Task.sleep(nanoseconds: 1_500_000_000) // 1.5s for tunnel to fully stop
-                _ = try? await APIClient.shared.request(
+        if let capturedSessionId = capturedSessionId {
+            cleanupOrphanedSession(capturedSessionId, reason: "user-initiated disconnect")
+        }
+        // Connection state will be updated by status observer
+    }
+
+    /// Best-effort notification to the backend that a session is no longer valid, so its device-count
+    /// slot is released. Captures `sessionId` by value so an in-flight cleanup for an old session can
+    /// never race against / target a newer session's token obtained after this call was made.
+    ///
+    /// The sessionId is persisted to a durable pending-disconnect list *before* the network call is
+    /// attempted, and only removed on confirmed success — if the app has no connectivity right now
+    /// (e.g. mid-airplane-mode), the call fails silently as before, but the record survives so
+    /// `retryPendingDisconnects()` can retry it on next launch instead of leaking the counter forever.
+    func cleanupOrphanedSession(_ sessionId: String, reason: String) {
+        LogService.shared.logService("VPN: cleaning up orphaned session (\(reason))")
+        Self.addPendingDisconnect(sessionId)
+        let delay = disconnectNotifyDelayNanoseconds
+        let client = apiClient
+        lastCleanupTask = Task.detached {
+            try? await Task.sleep(nanoseconds: delay) // time for tunnel to fully stop
+            do {
+                _ = try await client.request(
                     endpoint: .disconnect,
                     body: DisconnectRequest(sessionId: sessionId)
                 ) as DisconnectResponse
+                Self.removePendingDisconnect(sessionId)
+            } catch {
+                // Left in the pending list — retried via retryPendingDisconnects() on next launch.
             }
         }
-        // Connection state will be updated by status observer
+    }
+
+    // MARK: - Pending Disconnect Retry
+
+    /// Durable record of sessionIds still owed a confirmed /disconnect. `nonisolated` and backed only
+    /// by UserDefaults (thread-safe) + a serial queue, so it can be touched from the detached cleanup
+    /// Task without hopping back to the main actor.
+    private nonisolated static let pendingDisconnectsKey = "vpn_pending_disconnect_ids"
+    private nonisolated static let pendingDisconnectsQueue = DispatchQueue(label: "com.wiredog.vpn.pendingDisconnects")
+
+    private nonisolated static func addPendingDisconnect(_ sessionId: String) {
+        pendingDisconnectsQueue.sync {
+            var ids = Set(UserDefaults.standard.stringArray(forKey: pendingDisconnectsKey) ?? [])
+            ids.insert(sessionId)
+            UserDefaults.standard.set(Array(ids), forKey: pendingDisconnectsKey)
+        }
+    }
+
+    private nonisolated static func removePendingDisconnect(_ sessionId: String) {
+        pendingDisconnectsQueue.sync {
+            var ids = Set(UserDefaults.standard.stringArray(forKey: pendingDisconnectsKey) ?? [])
+            ids.remove(sessionId)
+            UserDefaults.standard.set(Array(ids), forKey: pendingDisconnectsKey)
+        }
+    }
+
+    nonisolated static func pendingDisconnectIds() -> [String] {
+        pendingDisconnectsQueue.sync {
+            UserDefaults.standard.stringArray(forKey: pendingDisconnectsKey) ?? []
+        }
+    }
+
+    /// Retries any /disconnect calls that were owed but never confirmed — e.g. the app had no
+    /// connectivity right as cleanupOrphanedSession()'s fire-and-forget call went out, so nothing
+    /// ever reached the backend. Safe to call unconditionally: each retry goes through the same
+    /// cleanupOrphanedSession() path, and the backend's /disconnect is idempotent.
+    func retryPendingDisconnects() {
+        for sessionId in Self.pendingDisconnectIds() {
+            cleanupOrphanedSession(sessionId, reason: "retrying pending disconnect from previous launch")
+        }
     }
 
     // MARK: - Status Observation
@@ -372,7 +538,7 @@ class VPNService: ObservableObject {
 
         statusObserver = NotificationCenter.default.addObserver(
             forName: .NEVPNStatusDidChange,
-            object: vpnManager?.connection,
+            object: vpnManager?.vpnConnection,
             queue: .main
         ) { [weak self] _ in
             Task { @MainActor in
@@ -381,8 +547,8 @@ class VPNService: ObservableObject {
         }
     }
 
-    private func updateConnectionState() {
-        guard let status = vpnManager?.connection.status else {
+    func updateConnectionState() {
+        guard let status = vpnManager?.vpnConnection.status else {
             connectionState = .disconnected
             return
         }
@@ -396,6 +562,22 @@ class VPNService: ObservableObject {
 
             // Auto-reconnect on unexpected disconnect
             if wasActive && !userInitiatedDisconnect && currentServerId != nil {
+                let wasStable = connectedSince.map {
+                    Date().timeIntervalSince($0) >= minimumStableConnectionDuration
+                } ?? false
+
+                // Connection never proved itself stable — clean up its slot rather than letting the
+                // upcoming reconnect attempt leak another increment on top of this orphaned one.
+                if !wasStable, let staleSessionId = sessionId {
+                    cleanupOrphanedSession(
+                        staleSessionId,
+                        reason: "dropped before \(Int(minimumStableConnectionDuration))s stability threshold"
+                    )
+                }
+                sessionId = nil
+                UserDefaults.standard.removeObject(forKey: "vpn_session_id")
+                connectedSince = nil
+
                 attemptReconnect()
             }
         case .connecting, .reasserting:
@@ -406,6 +588,7 @@ class VPNService: ObservableObject {
             connectionState = .connected
             isReconnecting = false
             reconnectAttempts = 0
+            connectedSince = Date()
             if statisticsTimer == nil {
                 startStatisticsPolling()
             }
@@ -420,13 +603,19 @@ class VPNService: ObservableObject {
 
     // MARK: - Auto-Reconnect
 
-    private func attemptReconnect() {
+    func attemptReconnect() {
         guard reconnectAttempts < maxReconnectAttempts,
               let serverId = currentServerId else {
             isReconnecting = false
             if reconnectAttempts >= maxReconnectAttempts {
                 LogService.shared.logService("Reconnection failed after \(maxReconnectAttempts) attempts", level: .error)
                 error = .connectionFailed("Reconnection failed after \(maxReconnectAttempts) attempts")
+                if let staleSessionId = sessionId {
+                    cleanupOrphanedSession(staleSessionId, reason: "reconnect attempts exhausted")
+                    sessionId = nil
+                    UserDefaults.standard.removeObject(forKey: "vpn_session_id")
+                }
+                currentServerId = nil
             }
             return
         }
@@ -435,8 +624,9 @@ class VPNService: ObservableObject {
         reconnectAttempts += 1
         LogService.shared.logService("Auto-reconnect attempt \(reconnectAttempts)/\(maxReconnectAttempts)", level: .warning)
 
-        // Exponential backoff with jitter: 1s, 2s, 4s, 8s, 15s max
-        let baseDelay = min(pow(2.0, Double(reconnectAttempts - 1)), 15.0)
+        // Exponential backoff with jitter, scaled by reconnectBaseDelay/reconnectMaxDelay
+        // (defaults: 1s, 2s, 4s, 8s, 15s max)
+        let baseDelay = min(reconnectBaseDelay * pow(2.0, Double(reconnectAttempts - 1)), reconnectMaxDelay)
         let jitterFactor = Double.random(in: 0.5...1.5)
         let delay = baseDelay * jitterFactor
 
@@ -454,6 +644,19 @@ class VPNService: ObservableObject {
                     blockAdsEnabled: lastBlockAdsEnabled,
                     blockMalwareEnabled: lastBlockMalwareEnabled
                 )
+            } catch VPNError.anotherVPNActive {
+                // Not a transient failure — retrying against a system VPN slot another app
+                // owns will just fail the same way every time until the user switches back
+                // to WireDog in Settings. Stop the loop instead of burning all retry attempts.
+                LogService.shared.logService("Reconnect aborted: another VPN configuration is active", level: .error)
+                isReconnecting = false
+                reconnectAttempts = 0
+                currentServerId = nil
+                if let staleSessionId = sessionId {
+                    cleanupOrphanedSession(staleSessionId, reason: "reconnect aborted — another VPN active")
+                    sessionId = nil
+                    UserDefaults.standard.removeObject(forKey: "vpn_session_id")
+                }
             } catch {
                 // Will retry via updateConnectionState when disconnect is detected again
                 LogService.shared.logService("Reconnect attempt \(reconnectAttempts) failed: \(error.localizedDescription)", level: .warning)
@@ -482,7 +685,7 @@ class VPNService: ObservableObject {
     }
 
     private func fetchStatistics() async {
-        guard let session = vpnManager?.connection as? NETunnelProviderSession else {
+        guard let session = vpnManager?.vpnConnection as? NETunnelProviderSession else {
             checkConnectionHealth()
             return
         }

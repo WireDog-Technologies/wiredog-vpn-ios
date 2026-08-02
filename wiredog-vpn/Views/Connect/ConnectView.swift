@@ -35,7 +35,22 @@ struct ConnectView: View {
         }
     }
 
+    var isTransitioning: Bool {
+        if vpnManager.isFetchingNetworkInfo {
+            return true
+        }
+        switch vpnManager.connectionState {
+        case .connecting, .disconnecting, .reconnecting:
+            return true
+        case .connected, .disconnected:
+            return false
+        }
+    }
+
     var locationText: String {
+        if isTransitioning {
+            return "Loading..."
+        }
         if vpnManager.connectionState == .connected, let server = vpnManager.selectedServer {
             return "\(server.city ?? server.countryName), \(server.countryCode)"
         }
@@ -89,7 +104,7 @@ struct ConnectView: View {
                                 .font(.system(size: 12))
                                 .foregroundColor(.vpnTextSecondary)
 
-                            Text(vpnManager.publicIP ?? "Loading...")
+                            Text(isTransitioning ? "Loading..." : (vpnManager.publicIP ?? "Loading..."))
                                 .font(.custom("Iosevka Term Extended", size: 16))
                                 .foregroundColor(vpnManager.connectionState == .connected ? statusColor : .vpnRed)
                         }

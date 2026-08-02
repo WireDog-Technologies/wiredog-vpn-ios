@@ -51,6 +51,16 @@ class IPService {
         }
     }
 
+    /// Drops any pooled/keep-alive connections. Must be called after the VPN
+    /// tunnel connects or disconnects — otherwise `getPublicIPSafe()` can keep
+    /// reusing a socket opened over the old network interface and silently
+    /// keep returning the pre-change IP instead of the current one.
+    func resetConnections() async {
+        await withCheckedContinuation { continuation in
+            session.reset { continuation.resume() }
+        }
+    }
+
     /// Fetches a city-level location string derived from the public IP.
     /// Returns "City, ST" for US IPs and "City, CC" for international IPs.
     /// Result is cached for 30 minutes to avoid repeated calls to ipapi.co.

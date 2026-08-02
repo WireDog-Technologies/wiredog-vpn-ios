@@ -5,7 +5,11 @@ class AppConfigService: ObservableObject {
     static let shared = AppConfigService()
 
     @Published var updateAction: UpdateAction = .none
-    @Published var isChecking = true
+    // Only reflects the initial cold-launch check — the app root gates its whole UI on this,
+    // so toggling it on every later re-check (e.g. the one connect() runs before each connection)
+    // would tear down and rebuild the tab view, silently resetting whichever tab the user is on.
+    @Published private(set) var isChecking = true
+    private var hasCompletedInitialCheck = false
 
     private let cacheKey = "appConfigCache"
     private let cacheTimestampKey = "appConfigCacheTimestamp"
@@ -16,8 +20,16 @@ class AppConfigService: ObservableObject {
     // MARK: - Public
 
     func checkAppConfig() async {
-        isChecking = true
-        defer { isChecking = false }
+        let isInitialCheck = !hasCompletedInitialCheck
+        if isInitialCheck {
+            isChecking = true
+        }
+        defer {
+            if isInitialCheck {
+                isChecking = false
+                hasCompletedInitialCheck = true
+            }
+        }
 
         LogService.shared.logApp("[AppConfig] Checking app configuration...")
         let (config, isCacheFresh) = await fetchConfigWithCache()

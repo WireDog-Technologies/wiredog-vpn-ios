@@ -64,6 +64,8 @@ struct ServersView: View {
                             svgName: "map",
                             servers: vpnManager.availableServers,
                             selectedServerId: vpnManager.selectedServer?.id,
+                            connectionState: vpnManager.connectionState,
+                            isSwitchingServer: vpnManager.isSwitchingServer,
                             onServerTapped: { serverId in
                                 vpnManager.selectServerFromMap(serverId)
                             }

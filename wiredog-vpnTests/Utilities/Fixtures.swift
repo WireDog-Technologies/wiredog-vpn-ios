@@ -76,6 +76,25 @@ enum TestFixtures {
     }
     """.data(using: .utf8)!
 
+    static func userProfileJSON(
+        subscriptionExpiresAt: String = "2030-01-01T00:00:00Z"
+    ) -> Data {
+        """
+        {
+          "id": 789,
+          "username": "vpntestuser",
+          "accountNumber": "VPN123TEST456",
+          "accountType": "standard",
+          "displayName": "VPN Test User",
+          "isActive": true,
+          "planTier": "premium",
+          "billingPeriod": "monthly",
+          "subscriptionExpiresAt": "\(subscriptionExpiresAt)",
+          "subscriptionStartedAt": "2026-01-01T00:00:00Z"
+        }
+        """.data(using: .utf8)!
+    }
+
     // MARK: - Servers JSON
 
     static let serverListJSON = """

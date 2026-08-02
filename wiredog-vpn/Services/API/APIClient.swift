@@ -44,6 +44,15 @@ actor APIClient {
 
     // MARK: - Public Methods
 
+    /// Drops any pooled/keep-alive connections. Must be called after the VPN tunnel connects
+    /// or disconnects — otherwise a request can keep reusing a socket opened over the old
+    /// network interface and fail/time out even though the network is otherwise fine.
+    func resetConnections() async {
+        await withCheckedContinuation { continuation in
+            session.reset { continuation.resume() }
+        }
+    }
+
     func request<T: Decodable>(
         endpoint: APIEndpoint,
         body: Encodable? = nil

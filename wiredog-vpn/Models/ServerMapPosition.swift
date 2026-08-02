@@ -16,7 +16,9 @@ struct ServerMapPosition {
         "Columbus":      (x: 1515, y: 500),
         "Dallas":        (x: 1050, y: 850),
         "Denver":        (x: 775,  y: 535),
+        "Honolulu":      (x: 670,  y: 1058),
         "Las Vegas":     (x: 440,  y: 635),
+        "Los Angeles":   (x: 315,  y: 720),
         "Miami":         (x: 1707, y: 1095),
         "Nashville":     (x: 1390, y: 690),
         "Newark":        (x: 1776, y: 420),
@@ -27,7 +29,9 @@ struct ServerMapPosition {
         "Richmond":      (x: 1715, y: 580),
         "Salt Lake City":(x: 575,  y: 455),
         "San Francisco": (x: 210,  y: 510),
+        "San Jose":      (x: 210,  y: 510),
         "Seattle":       (x: 330,  y: 96),
+        "Silicon Valley":(x: 210,  y: 510),
     ]
 
     /// Look up the SVG position for a server city name.

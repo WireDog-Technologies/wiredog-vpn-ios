@@ -9,6 +9,19 @@ struct ChangeLogEntry: Identifiable {
 
 private let changeLog: [ChangeLogEntry] = [
     ChangeLogEntry(
+        version: "1.6.0",
+        date: "August 2026",
+        changes: [
+            "Live connection-status map markers — server markers now turn green when connected, gold while connecting, and red when idle.",
+            "You can now cancel a connection attempt — tap Connect again while connecting or reconnecting to stop it.",
+            "Switching servers while connected now reconnects to the new server automatically, instead of requiring a manual disconnect first.",
+            "Fixed the connection timer resetting to 0 after reopening the app while still connected.",
+            "Fixed the connected server and location sometimes displaying incorrectly after reopening the app.",
+            "Fixed an occasional \"Unable to verify subscription status\" error when connecting.",
+            "Fixed the public IP occasionally not updating right after connecting or disconnecting.",
+        ]
+    ),
+    ChangeLogEntry(
         version: "1.5.0",
         date: "July 2026",
         changes: [

@@ -5,7 +5,23 @@ struct SVGView: UIViewRepresentable {
     let svgName: String
     let servers: [Server]
     let selectedServerId: String?
+    let connectionState: ConnectionState
+    /// True while VPNManager is mid server-switch (disconnect-old → connect-new). Overrides
+    /// `connectionState` so that sequence reads as one continuous gold, instead of flickering
+    /// through the genuine connected(stale)/disconnecting/disconnected values it passes through.
+    let isSwitchingServer: Bool
     let onServerTapped: (String) -> Void
+
+    /// Marker color status: green only while actually connected, gold while a connect/disconnect
+    /// is in flight, red when a server is selected but there's no live tunnel at all.
+    private var markerStatus: String {
+        if isSwitchingServer { return "connecting" }
+        switch connectionState {
+        case .connected: return "connected"
+        case .connecting, .reconnecting, .disconnecting: return "connecting"
+        case .disconnected: return "disconnected"
+        }
+    }
 
     // Zoom configuration — matches Android's 2.5x
     private let zoomLevel: CGFloat = 2.5
@@ -44,9 +60,9 @@ struct SVGView: UIViewRepresentable {
            let city = server.city,
            let position = ServerMapPosition.position(forCity: city) {
             let safeCity = city.replacingOccurrences(of: "'", with: "\\'")
-            js = "zoomToPoint(\(position.x), \(position.y), \(zoomLevel), \(animationDuration)); setSelectedMarker('\(safeCity)');"
+            js = "zoomToPoint(\(position.x), \(position.y), \(zoomLevel), \(animationDuration)); setSelectedMarker('\(safeCity)', '\(markerStatus)');"
         } else {
-            js = "resetView(\(animationDuration)); setSelectedMarker(null);"
+            js = "resetView(\(animationDuration)); setSelectedMarker(null, 'disconnected');"
         }
 
         // Run immediately if page is loaded; otherwise queue for after didFinish
@@ -105,11 +121,23 @@ struct SVGView: UIViewRepresentable {
                 .server-marker .inner-dot {
                     fill: #4A90E2;
                 }
-                .server-marker.selected .outer-ring {
+                .server-marker.connected .outer-ring {
                     fill: rgba(46, 204, 113, 0.4);
                 }
-                .server-marker.selected .inner-dot {
+                .server-marker.connected .inner-dot {
                     fill: #2ECC71;
+                }
+                .server-marker.connecting .outer-ring {
+                    fill: rgba(210, 181, 12, 0.4);
+                }
+                .server-marker.connecting .inner-dot {
+                    fill: #D2B50C;
+                }
+                .server-marker.disconnected .outer-ring {
+                    fill: rgba(232, 76, 60, 0.4);
+                }
+                .server-marker.disconnected .inner-dot {
+                    fill: #E84C3C;
                 }
 
                 @keyframes pulse {
@@ -179,11 +207,11 @@ struct SVGView: UIViewRepresentable {
                 }
 
                 // Match by city name so all servers in the same city highlight correctly
-                function setSelectedMarker(city) {
-                    document.querySelectorAll('.server-marker').forEach(m => m.classList.remove('selected'));
+                function setSelectedMarker(city, status) {
+                    document.querySelectorAll('.server-marker').forEach(m => m.classList.remove('connected', 'connecting', 'disconnected'));
                     if (city) {
                         document.querySelectorAll('.server-marker').forEach(m => {
-                            if (m.dataset.city === city) m.classList.add('selected');
+                            if (m.dataset.city === city) m.classList.add(status);
                         });
                     }
                 }
