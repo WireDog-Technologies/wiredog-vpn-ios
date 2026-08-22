@@ -5,7 +5,26 @@ struct SubscriptionSheet: View {
     let onSuccess: () -> Void
 
     @State private var showAppStorePlans: Bool = false
+    @State private var isRequestingCheckout: Bool = false
     @Environment(\.dismiss) private var dismiss
+
+    /// Opens checkout with a one-time handoff code so the already-logged-in user lands
+    /// straight on checkout for their existing account instead of the public signup funnel.
+    /// Falls back to the static get-started URL if the code request fails (e.g. offline),
+    /// so a network hiccup never dead-ends the funnel entirely.
+    private func startCheckout() async {
+        guard !isRequestingCheckout else { return }
+        isRequestingCheckout = true
+        defer { isRequestingCheckout = false }
+
+        do {
+            let url = try await AuthService.shared.checkoutHandoffURL()
+            await UIApplication.shared.open(url)
+        } catch {
+            LogService.shared.logApp("[Checkout] Handoff token request failed: \(error.localizedDescription)", level: .warning)
+            await UIApplication.shared.open(Config.getStartedURL)
+        }
+    }
 
     var body: some View {
         ZStack {
@@ -92,10 +111,10 @@ struct SubscriptionSheet: View {
 
                             GradientActionButton(
                                 title: "Start Subscription",
-                                isLoading: false,
-                                isDisabled: false
+                                isLoading: isRequestingCheckout,
+                                isDisabled: isRequestingCheckout
                             ) {
-                                UIApplication.shared.open(Config.getStartedURL)
+                                Task { await startCheckout() }
                             }
 
                             Button {

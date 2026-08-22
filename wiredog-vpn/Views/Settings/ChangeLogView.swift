@@ -9,6 +9,16 @@ struct ChangeLogEntry: Identifiable {
 
 private let changeLog: [ChangeLogEntry] = [
     ChangeLogEntry(
+        version: "1.7.0",
+        date: "August 2026",
+        changes: [
+            "You can now toggle your VPN connections directly from the iOS settings page.",
+            "Connecting now automatically disconnects other active VPNs on your device.",
+            "New in-app announcements have been added to update the user on server maintenance, information, or incidents.",
+            "Servers page now displays your current connection status.",
+        ]
+    ),
+    ChangeLogEntry(
         version: "1.6.0",
         date: "August 2026",
         changes: [

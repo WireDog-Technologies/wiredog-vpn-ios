@@ -8,6 +8,7 @@ enum APIError: LocalizedError {
     case forbidden
     case notFound
     case rateLimited
+    case deviceLimitReached
     case serverError(Int)
     case networkError(Error)
     case decodingError(Error)
@@ -30,6 +31,8 @@ enum APIError: LocalizedError {
             return "Resource not found"
         case .rateLimited:
             return "Too many requests. Please wait and try again."
+        case .deviceLimitReached:
+            return "You've reached your 5-device limit. Disconnect another device to continue."
         case .serverError(let code):
             return "Server error (\(code)). Please try again later."
         case .networkError(let error):
@@ -47,7 +50,7 @@ enum APIError: LocalizedError {
         switch self {
         case .serverError, .rateLimited, .networkError:
             return true
-        case .invalidURL, .invalidResponse, .badRequest, .unauthorized, .forbidden, .notFound, .decodingError, .encodingError, .unknown:
+        case .invalidURL, .invalidResponse, .badRequest, .unauthorized, .forbidden, .notFound, .deviceLimitReached, .decodingError, .encodingError, .unknown:
             return false
         }
     }

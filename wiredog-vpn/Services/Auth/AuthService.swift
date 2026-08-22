@@ -230,7 +230,8 @@ class AuthService: ObservableObject {
             LogService.shared.logApp("[RegisterAnonymous] Sending request to /auth/register/anonymous")
 
             let response: AnonymousAccountResponse = try await apiClient.request(
-                endpoint: .registerAnonymous
+                endpoint: .registerAnonymous,
+                body: AnonymousAccountRequest()
             )
 
             LogService.shared.logApp("[RegisterAnonymous] Account created successfully, account number: \(redactAccountNumber(response.accountNumber))")
@@ -244,6 +245,21 @@ class AuthService: ObservableObject {
             self.error = error as? AuthError ?? AuthError.networkError(error)
             throw error
         }
+    }
+
+    // MARK: - Checkout Handoff
+
+    /// Mints a one-time code so the checkout website can recognize this already-authenticated
+    /// user without asking them to sign in again. The code travels as a URL fragment (`#`), not
+    /// a query parameter — fragments are never sent to the server or included in a Referer
+    /// header, matching the mitigation Legal signed off on for this flow.
+    func checkoutHandoffURL() async throws -> URL {
+        let response: HandoffTokenResponse = try await apiClient.request(endpoint: .handoffToken)
+        guard var components = URLComponents(url: Config.checkoutURL, resolvingAgainstBaseURL: false) else {
+            return Config.checkoutURL
+        }
+        components.fragment = "handoff=\(response.token)"
+        return components.url ?? Config.checkoutURL
     }
 
     // MARK: - Password Reset

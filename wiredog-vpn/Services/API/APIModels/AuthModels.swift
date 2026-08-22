@@ -74,6 +74,13 @@ enum PlanTier: String, Decodable {
     case patriot
 }
 
+// MARK: - Checkout Handoff
+
+struct HandoffTokenResponse: Decodable {
+    let token: String
+    let expiresIn: Int
+}
+
 // MARK: - IAP Validation
 
 struct ValidateIAPRequest: Encodable {
@@ -90,3 +97,9 @@ struct ValidateIAPResponse: Decodable {
 // MARK: - Empty Response
 
 struct EmptyResponse: Decodable {}
+
+// MARK: - Error Response
+
+struct ErrorResponse: Decodable {
+    let error: String
+}

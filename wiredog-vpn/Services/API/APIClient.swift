@@ -97,6 +97,14 @@ actor APIClient {
             throw APIError.invalidResponse
         }
 
+        // Sliding session renewal: the backend reissues a fresh token with a renewed expiry on
+        // every authenticated request (see verifyToken in the backend's auth middleware) so an
+        // actively-used app never hits its token's flat TTL. Persist it whenever present, even on
+        // a non-2xx response, since the token itself was still valid to make the renewal decision.
+        if let refreshedToken = httpResponse.value(forHTTPHeaderField: "X-Refreshed-Token") {
+            keychainService.saveAuthToken(refreshedToken)
+        }
+
         // Handle HTTP status codes
         switch httpResponse.statusCode {
         case 200...299:
@@ -114,6 +122,14 @@ actor APIClient {
             LogService.shared.logApp("[API] 404 Not Found", level: .error)
             throw APIError.notFound
         case 429:
+            // The backend reuses 429 for two different conditions: real rate limiting and the
+            // 5-device connection cap. Peek at the error message to tell them apart so the user
+            // gets an actionable message instead of a generic "too many requests".
+            if let serverMessage = try? decoder.decode(ErrorResponse.self, from: data).error,
+               serverMessage.contains("Connection limit exceeded") {
+                LogService.shared.logApp("[API] 429 Device limit reached", level: .error)
+                throw APIError.deviceLimitReached
+            }
             LogService.shared.logApp("[API] 429 Rate Limited — too many requests", level: .error)
             throw APIError.rateLimited
         case 500...599:

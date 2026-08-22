@@ -193,6 +193,11 @@ struct ServersView: View {
                     .background(Color.vpnBackground.padding(.bottom, -(proxy.size.height * 2)))
                 }
                 .frame(width: proxy.size.width)
+
+                // Protection status banner
+                StatusBannerView(vpnManager: vpnManager)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.top, 12)
             }
             .background(Color.vpnSecondaryBackground)
             .onAppear {
@@ -232,6 +237,58 @@ struct ServersView: View {
         .onPreferenceChange(ViewHeightPreferenceKey.self) { viewHeight in
             sheetHeight = viewHeight
         }
+    }
+}
+
+// MARK: - Status Banner (top-center PROTECTED/UNPROTECTED/CONNECTING indicator)
+
+private struct StatusBannerView: View {
+    @ObservedObject var vpnManager: VPNManager
+    @State private var isPulsing = false
+
+    var isTransitioning: Bool {
+        switch vpnManager.connectionState {
+        case .connecting, .disconnecting, .reconnecting:
+            return true
+        case .connected, .disconnected:
+            return false
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 9) {
+            ZStack {
+                if isTransitioning {
+                    Circle()
+                        .fill(vpnManager.statusColor.opacity(0.3))
+                        .frame(width: 25, height: 25)
+                        .scaleEffect(isPulsing ? 1.5 : 1.0)
+                        .opacity(isPulsing ? 0 : 0.6)
+                        .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: false), value: isPulsing)
+                        .onAppear { isPulsing = true }
+                        .onDisappear { isPulsing = false }
+                }
+
+                Circle()
+                    .fill(vpnManager.statusColor)
+                    .frame(width: 25, height: 25)
+
+                Image(systemName: vpnManager.statusIconName)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.vpnBackground)
+            }
+
+            Text(vpnManager.statusText)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundColor(vpnManager.statusColor)
+                .tracking(0.5)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 9)
+        .background(
+            Capsule()
+                .fill(Color.vpnCardBackground.opacity(0.85))
+        )
     }
 }
 

@@ -39,6 +39,7 @@ struct wiredog_vpnApp: App {
             .preferredColorScheme(.dark)
             .task {
                 await appConfigService.checkAppConfig()
+                BroadcastService.shared.start()
             }
         }
     }

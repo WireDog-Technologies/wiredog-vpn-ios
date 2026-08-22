@@ -112,12 +112,6 @@ struct DisconnectRequest: Encodable {
     let sessionId: String
 }
 
-// MARK: - Disconnect Response
-
-struct DisconnectResponse: Decodable {
-    let success: Bool
-}
-
 // MARK: - Tunnel Statistics
 
 struct TunnelStatistics: Codable, Equatable {

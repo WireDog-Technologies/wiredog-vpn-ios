@@ -5,9 +5,17 @@ class ServerStorage {
     private static let favoriteServersKey = "favoriteServers"
     private static let maxRecentServers = 5
 
+    // Read by the WireDogTunnel extension when it needs to originate its own connect (e.g. the
+    // tunnel started standalone from iOS Settings > VPN rather than through the app).
+    static let lastConnectedServerKey = "lastConnectedServerId"
+
     // Use App Group for sharing with Network Extension
     private static var userDefaults: UserDefaults {
         UserDefaults(suiteName: Config.appGroupIdentifier) ?? .standard
+    }
+
+    static func setLastConnectedServer(_ serverId: String) {
+        userDefaults.set(serverId, forKey: lastConnectedServerKey)
     }
 
     static func addRecentServer(_ serverId: String) {

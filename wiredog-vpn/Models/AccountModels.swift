@@ -2,9 +2,10 @@ import Foundation
 
 // MARK: - Standard Account
 
-struct StandardAccountRequest: Codable {
+struct StandardAccountRequest: Encodable {
     let email: String
     let password: String
+    let platform: String = "iOS"
 }
 
 struct StandardAccountResponse: Codable {
@@ -13,6 +14,10 @@ struct StandardAccountResponse: Codable {
 }
 
 // MARK: - Anonymous Account
+
+struct AnonymousAccountRequest: Encodable {
+    let platform: String = "iOS"
+}
 
 struct AnonymousAccountResponse: Codable {
     let accountNumber: String

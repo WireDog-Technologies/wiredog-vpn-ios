@@ -9,6 +9,7 @@ struct AnonymousAccountView: View {
     @State private var errorMessage = ""
     @State private var generatedAccountNumber: String?
     @State private var showCopyMessage = false
+    @State private var isCreatingAccount = false
 
     var body: some View {
         ZStack {
@@ -177,7 +178,15 @@ struct AnonymousAccountView: View {
     }
 
     private func createAccount() {
+        // Guards against a duplicate account being created: `.onAppear` can fire more than once
+        // for the same view, and "Try Again" on the error alert re-invokes this too. Without this
+        // check, either path can fire a second concurrent /register/anonymous call and mint a
+        // second, unrelated account.
+        guard !isCreatingAccount, generatedAccountNumber == nil else { return }
+        isCreatingAccount = true
+
         Task {
+            defer { isCreatingAccount = false }
             do {
                 let accountNumber = try await authService.registerAnonymous()
                 withAnimation {

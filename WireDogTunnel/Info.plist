@@ -9,5 +9,9 @@
 		<key>NSExtensionPrincipalClass</key>
 		<string>$(PRODUCT_MODULE_NAME).PacketTunnelProvider</string>
 	</dict>
+	<key>WireDogAPIBaseURL</key>
+	<string>$(WIREDOG_API_BASE_URL)</string>
+	<key>WireDogAppGroupID</key>
+	<string>$(WIREDOG_APP_GROUP_ID)</string>
 </dict>
 </plist>

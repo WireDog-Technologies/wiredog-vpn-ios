@@ -29,6 +29,11 @@ enum Config {
 
     static let getStartedURL: URL = URL(string: Bundle.main.infoDictionary?["WireDogURLGetStarted"] as? String ?? "https://www.example.com/get-started")!
 
+    // Must match the environment WIREDOG_API_BASE_URL points at — the checkout page
+    // exchanges a handoff code against whichever API/DB minted it, so pointing this at
+    // prod while running against the int API (or vice versa) always fails the exchange.
+    static let checkoutURL: URL = URL(string: Bundle.main.infoDictionary?["WireDogURLCheckout"] as? String ?? "https://www.example.com/checkout")!
+
     static let appStoreURL: URL = URL(string: Bundle.main.infoDictionary?["WireDogAppStoreURL"] as? String ?? "https://apps.apple.com/app/example/id0")!
 
     static let pricingURL: URL = URL(string: "https://www.wiredogvpn.com/#pricing")!

@@ -3,6 +3,7 @@ import StoreKit
 
 struct MainTabView: View {
     @ObservedObject var vpnManager: VPNManager
+    @ObservedObject private var authService = AuthService.shared
     @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab = 1
     @State private var showReportIssueFromReviewPrompt = false
@@ -42,6 +43,13 @@ struct MainTabView: View {
         .task(id: scenePhase) {
             guard scenePhase == .active else { return }
             vpnManager.handleAppForeground()
+            // Refresh the account profile on every foreground — most notably, this is what
+            // picks up a subscription that was just purchased on the website checkout page
+            // (the user pays in Safari, then manually switches back; nothing else would tell
+            // us their plan changed). Cheap no-op the rest of the time.
+            if authService.isAuthenticated {
+                try? await authService.fetchUserProfile()
+            }
             await vpnManager.attemptAutoConnect()
         }
         .sheet(isPresented: $vpnManager.showReviewPrompt) {

@@ -2,6 +2,7 @@ import Foundation
 import Combine
 import Network
 import UIKit
+import SwiftUI
 
 @MainActor
 class VPNManager: ObservableObject {
@@ -36,6 +37,43 @@ class VPNManager: ObservableObject {
     private let vpnService = VPNService.shared
     private let authService = AuthService.shared
     private let ipService = IPService.shared
+
+    // MARK: - Status Presentation
+
+    var statusText: String {
+        switch connectionState {
+        case .connected:
+            return isConnectionHealthy ? "PROTECTED" : "CONNECTION ISSUE"
+        case .connecting:
+            return "CONNECTING..."
+        case .disconnected:
+            return "UNPROTECTED"
+        case .disconnecting:
+            return "DISCONNECTING..."
+        case .reconnecting:
+            return "RECONNECTING..."
+        }
+    }
+
+    var statusColor: Color {
+        switch connectionState {
+        case .connected:
+            return isConnectionHealthy ? .vpnGreen : Color(red: 0.894, green: 0.494, blue: 0.133)
+        case .connecting, .reconnecting, .disconnecting:
+            return Color(red: 0.824, green: 0.710, blue: 0.047)
+        case .disconnected:
+            return .vpnRed
+        }
+    }
+
+    var statusIconName: String {
+        switch connectionState {
+        case .connected:
+            return isConnectionHealthy ? "shield.fill" : "exclamationmark.shield.fill"
+        default:
+            return "shield.slash"
+        }
+    }
 
     // MARK: - Private Properties
     private var timer: Timer?
@@ -328,29 +366,41 @@ class VPNManager: ObservableObject {
 
         LogService.shared.logApp("[VPNManager] Connect requested: \(server.city ?? server.countryName) (\(server.id))")
 
-        // Subscription check
-        if let userProfile = authService.currentUser {
-            let isSubscriptionActive = userProfile.subscriptionExpiresAt.map { $0 > Date() } ?? false
-            if !isSubscriptionActive {
-                LogService.shared.logApp("[VPNManager] Connect failed: subscription not active", level: .error)
-                pendingServer = server
-                needsSubscription = true
-                return
-            }
-        } else {
-            // User not loaded, cannot proceed
-            LogService.shared.logApp("[VPNManager] Connect failed: user profile not loaded", level: .error)
-            errorMessage = "Unable to verify subscription. Please try logging out and back in."
-            return
-        }
-
-        pendingServer = nil
-        selectedServer = server
-        errorMessage = nil
-        UserDefaults.standard.set(false, forKey: Self.userManuallyDisconnectedKey)
-
         connectTask = Task {
             do {
+                // Subscription check. The foreground refresh in MainTabView normally keeps this
+                // current, but if the user pays on the website and switches back fast enough to
+                // beat that refresh, the cached profile can still show inactive here — refetch
+                // once before actually surfacing the paywall, so a just-completed purchase doesn't
+                // force a cold restart to be recognized.
+                if authService.currentUser == nil {
+                    try? await authService.fetchUserProfile()
+                }
+
+                guard let userProfile = authService.currentUser else {
+                    LogService.shared.logApp("[VPNManager] Connect failed: user profile not loaded", level: .error)
+                    errorMessage = "Unable to verify subscription. Please try logging out and back in."
+                    return
+                }
+
+                var isSubscriptionActive = userProfile.subscriptionExpiresAt.map { $0 > Date() } ?? false
+                if !isSubscriptionActive {
+                    try? await authService.fetchUserProfile()
+                    isSubscriptionActive = authService.currentUser?.subscriptionExpiresAt.map { $0 > Date() } ?? false
+                }
+
+                guard isSubscriptionActive else {
+                    LogService.shared.logApp("[VPNManager] Connect failed: subscription not active", level: .error)
+                    pendingServer = server
+                    needsSubscription = true
+                    return
+                }
+
+                pendingServer = nil
+                selectedServer = server
+                errorMessage = nil
+                UserDefaults.standard.set(false, forKey: Self.userManuallyDisconnectedKey)
+
                 // Check app config before connecting
                 await AppConfigService.shared.checkAppConfig()
 

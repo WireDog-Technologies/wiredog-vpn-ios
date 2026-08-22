@@ -9,13 +9,59 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     // MARK: - Tunnel Lifecycle
 
     override func startTunnel(options: [String: NSObject]?, completionHandler: @escaping (Error?) -> Void) {
-        // Extract WireGuard configuration from options
-        guard let configString = options?["wgConfig"] as? String else {
-            NSLog("[WireDog] Missing WireGuard configuration")
-            completionHandler(PacketTunnelError.missingConfiguration)
+        // The app always passes wgConfig when it initiates the connect (VPNService.connect()). A nil
+        // options dict only happens when iOS itself starts the tunnel — the Settings > VPN toggle, or
+        // an on-demand rule evaluation — with no app process involved to hand over a fresh config.
+        if let configString = options?["wgConfig"] as? String {
+            startWireGuardTunnel(configString: configString, completionHandler: completionHandler)
             return
         }
 
+        NSLog("[WireDog] No options provided (standalone start) — originating our own session")
+        startStandaloneTunnel(completionHandler: completionHandler)
+    }
+
+    /// Handles a start with no app-provided options by fetching a fresh WireGuard config directly
+    /// from the backend, using the auth token and last-connected server persisted (by the app) to
+    /// the shared App Group container. Fails cleanly with no user-facing surface — there is no UI to
+    /// report to here — the toggle in Settings will simply revert to off.
+    private func startStandaloneTunnel(completionHandler: @escaping (Error?) -> Void) {
+        guard TunnelStandaloneConnectBackoff.shouldAttempt() else {
+            NSLog("[WireDog] Standalone connect backing off after repeated failures")
+            completionHandler(PacketTunnelError.standaloneUnavailable)
+            return
+        }
+
+        guard let token = TunnelKeychain.getAuthToken() else {
+            NSLog("[WireDog] Standalone start failed: no auth token available")
+            TunnelStandaloneConnectBackoff.recordFailure()
+            completionHandler(PacketTunnelError.standaloneUnavailable)
+            return
+        }
+
+        guard let serverId = TunnelStorage.lastConnectedServerId else {
+            NSLog("[WireDog] Standalone start failed: no last-connected server on record")
+            TunnelStandaloneConnectBackoff.recordFailure()
+            completionHandler(PacketTunnelError.standaloneUnavailable)
+            return
+        }
+
+        Task {
+            do {
+                let result = try await TunnelAPIClient.connect(token: token, serverId: serverId)
+                TunnelStorage.sessionId = result.sessionId
+                TunnelStandaloneConnectBackoff.recordSuccess()
+                NSLog("[WireDog] Standalone /connect succeeded, starting tunnel")
+                startWireGuardTunnel(configString: result.wgConfig, completionHandler: completionHandler)
+            } catch {
+                NSLog("[WireDog] Standalone /connect failed: \(error)")
+                TunnelStandaloneConnectBackoff.recordFailure()
+                completionHandler(PacketTunnelError.standaloneUnavailable)
+            }
+        }
+    }
+
+    private func startWireGuardTunnel(configString: String, completionHandler: @escaping (Error?) -> Void) {
         NSLog("[WireDog] Starting tunnel with config length: \(configString.count)")
 
         // Parse WireGuard configuration
@@ -65,6 +111,35 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
 
             self?.adapter = nil
             self?.tunnelConfiguration = nil
+            self?.notifyBackendOfDisconnectIfOwed(completionHandler: completionHandler)
+        }
+    }
+
+    /// If a sessionId is still present in shared storage at teardown time, nobody else has claimed
+    /// responsibility for telling the backend yet. The app's own disconnect() clears this key
+    /// *before* it calls stopVPNTunnel(), so an app-initiated disconnect always finds it already
+    /// nil here and skips this entirely (avoiding a double /disconnect against the backend's
+    /// non-idempotent counter decrement). A Settings-toggled-off session, or any teardown the app
+    /// never initiated, still has the key set — that's what this path is for.
+    ///
+    /// Best-effort only: stopTunnel runs under a limited time budget before iOS may reclaim the
+    /// extension process, so this isn't a hard guarantee. On failure/timeout the key is deliberately
+    /// left in place — the app's existing crash-recovery reconciliation (VPNService.loadVPNManager)
+    /// will find it stale on next launch and retry via its own durable pending-disconnect queue.
+    private func notifyBackendOfDisconnectIfOwed(completionHandler: @escaping () -> Void) {
+        guard let sessionId = TunnelStorage.sessionId, let token = TunnelKeychain.getAuthToken() else {
+            completionHandler()
+            return
+        }
+
+        Task {
+            do {
+                try await TunnelAPIClient.disconnect(token: token, sessionId: sessionId)
+                TunnelStorage.sessionId = nil
+                NSLog("[WireDog] Standalone /disconnect succeeded")
+            } catch {
+                NSLog("[WireDog] Standalone /disconnect failed, leaving for app reconciliation: \(error)")
+            }
             completionHandler()
         }
     }
@@ -173,6 +248,7 @@ enum PacketTunnelError: Error, LocalizedError {
     case missingConfiguration
     case invalidConfiguration
     case adapterCreationFailed
+    case standaloneUnavailable
 
     var errorDescription: String? {
         switch self {
@@ -182,6 +258,8 @@ enum PacketTunnelError: Error, LocalizedError {
             return "Invalid WireGuard configuration"
         case .adapterCreationFailed:
             return "Failed to create WireGuard adapter"
+        case .standaloneUnavailable:
+            return "Unable to start VPN without the app — sign in or connect from WireDog VPN first"
         }
     }
 }

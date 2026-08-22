@@ -3,37 +3,24 @@ import UIKit
 
 struct ConnectView: View {
     @ObservedObject var vpnManager: VPNManager
+    @ObservedObject private var broadcastService = BroadcastService.shared
     @State private var showServerDetails = false
     @State private var showServerSelector = false
+    @State private var showAnnouncements = false
     @State private var isPulsing = false
+    @State private var envelopePulse = false
 
-    var statusText: String {
-        switch vpnManager.connectionState {
-        case .connected:
-            return vpnManager.isConnectionHealthy ? "PROTECTED" : "CONNECTION ISSUE"
-        case .connecting:
-            return "CONNECTING..."
-        case .disconnected:
-            return "UNPROTECTED"
-        case .disconnecting:
-            return "DISCONNECTING..."
-        case .reconnecting:
-            return "RECONNECTING..."
-        }
+    private var activeAnnouncements: [BroadcastMessage] {
+        broadcastService.activeMessages()
     }
 
-    var statusColor: Color {
-        switch vpnManager.connectionState {
-        case .connected:
-            return vpnManager.isConnectionHealthy ? .vpnGreen : Color(red: 0.894, green: 0.494, blue: 0.133)
-        case .connecting, .reconnecting:
-            return Color(red: 0.824, green: 0.710, blue: 0.047)
-        case .disconnected:
-            return .vpnRed
-        case .disconnecting:
-            return Color(red: 0.824, green: 0.710, blue: 0.047)
-        }
+    private var unreadAnnouncementCount: Int {
+        broadcastService.unreadCount()
     }
+
+    var statusText: String { vpnManager.statusText }
+
+    var statusColor: Color { vpnManager.statusColor }
 
     var isTransitioning: Bool {
         if vpnManager.isFetchingNetworkInfo {
@@ -80,6 +67,39 @@ struct ConnectView: View {
                         .frame(height: 52)
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
+                .overlay(alignment: .trailing) {
+                    // Announcements — envelope icon, vertically centered on the logo row.
+                    // Hidden entirely when there's nothing relevant to show.
+                    if !activeAnnouncements.isEmpty {
+                        Button(action: { showAnnouncements = true }) {
+                            ZStack(alignment: .topTrailing) {
+                                Image(systemName: "envelope")
+                                    .font(.system(size: 20, weight: .medium))
+                                    .foregroundColor(.vpnTextPrimary)
+                                    .scaleEffect(envelopePulse ? 1.2 : 1.0)
+                                    .animation(.easeInOut(duration: 0.3).repeatCount(3, autoreverses: true), value: envelopePulse)
+
+                                if unreadAnnouncementCount > 0 {
+                                    Text(unreadAnnouncementCount > 9 ? "9+" : "\(unreadAnnouncementCount)")
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundColor(.white)
+                                        .frame(minWidth: 16, minHeight: 16)
+                                        .background(Circle().fill(Color.vpnRed))
+                                        .offset(x: 10, y: -8)
+                                }
+                            }
+                        }
+                        .padding(.trailing, 32)
+                        .offset(y: -1)
+                        .onChange(of: unreadAnnouncementCount) { count in
+                            guard count > 0 else { return }
+                            envelopePulse = true
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
+                                envelopePulse = false
+                            }
+                        }
+                    }
+                }
                 .padding(.top, 12)
                 .padding(.bottom, 20)
 
@@ -146,9 +166,7 @@ struct ConnectView: View {
                             .fill(statusColor)
                             .frame(width: 140, height: 140)
 
-                        Image(systemName: vpnManager.connectionState == .connected
-                              ? (vpnManager.isConnectionHealthy ? "shield.fill" : "exclamationmark.shield.fill")
-                              : "shield.slash")
+                        Image(systemName: vpnManager.statusIconName)
                             .font(.system(size: 56, weight: .regular))
                             .foregroundColor(.vpnBackground)
                     }
@@ -202,6 +220,9 @@ struct ConnectView: View {
                     .padding(.bottom, 20)
                 }
             }
+        }
+        .sheet(isPresented: $showAnnouncements) {
+            BroadcastListView(broadcastService: broadcastService)
         }
         .sheet(isPresented: $showServerDetails) {
             if let server = vpnManager.selectedServer {

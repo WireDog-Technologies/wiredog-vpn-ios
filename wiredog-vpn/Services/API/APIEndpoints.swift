@@ -15,12 +15,14 @@ enum APIEndpoint {
     case connect
     case disconnect
     case appConfig
+    case announcements
     case deleteAccount
     case forgotPassword
     case verifyResetCode
     case resetPassword
     case registerStandard
     case registerAnonymous
+    case handoffToken
     case validateIAP
     case reportIssue
 
@@ -40,6 +42,8 @@ enum APIEndpoint {
             return "/vpn/disconnect"
         case .appConfig:
             return "/app/config"
+        case .announcements:
+            return "/app/announcements"
         case .deleteAccount:
             return "/auth/account"
         case .forgotPassword:
@@ -52,6 +56,8 @@ enum APIEndpoint {
             return "/auth/register/standard"
         case .registerAnonymous:
             return "/auth/register/anonymous"
+        case .handoffToken:
+            return "/auth/handoff-token"
         case .validateIAP:
             return "/auth/validate-iap"
         case .reportIssue:
@@ -61,9 +67,9 @@ enum APIEndpoint {
 
     var method: HTTPMethod {
         switch self {
-        case .login, .logout, .connect, .disconnect, .forgotPassword, .verifyResetCode, .resetPassword, .registerStandard, .registerAnonymous, .validateIAP, .reportIssue:
+        case .login, .logout, .connect, .disconnect, .forgotPassword, .verifyResetCode, .resetPassword, .registerStandard, .registerAnonymous, .handoffToken, .validateIAP, .reportIssue:
             return .POST
-        case .me, .servers, .appConfig:
+        case .me, .servers, .appConfig, .announcements:
             return .GET
         case .deleteAccount:
             return .DELETE
@@ -72,9 +78,9 @@ enum APIEndpoint {
 
     var requiresAuth: Bool {
         switch self {
-        case .login, .appConfig, .forgotPassword, .verifyResetCode, .resetPassword, .registerStandard, .registerAnonymous, .reportIssue:
+        case .login, .appConfig, .announcements, .forgotPassword, .verifyResetCode, .resetPassword, .registerStandard, .registerAnonymous, .reportIssue:
             return false
-        case .logout, .me, .servers, .connect, .disconnect, .deleteAccount, .validateIAP:
+        case .logout, .me, .servers, .connect, .disconnect, .deleteAccount, .handoffToken, .validateIAP:
             return true
         }
     }

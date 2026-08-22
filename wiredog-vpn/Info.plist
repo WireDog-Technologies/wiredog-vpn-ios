@@ -22,6 +22,8 @@
 	<string>$(WIREDOG_KEYCHAIN_GROUP)</string>
 	<key>WireDogTunnelBundleID</key>
 	<string>$(WIREDOG_TUNNEL_BUNDLE_ID)</string>
+	<key>WireDogURLCheckout</key>
+	<string>$(WIREDOG_URL_CHECKOUT)</string>
 	<key>WireDogURLDashboard</key>
 	<string>$(WIREDOG_URL_DASHBOARD)</string>
 	<key>WireDogURLGetStarted</key>
