@@ -25,6 +25,8 @@ enum APIEndpoint {
     case handoffToken
     case validateIAP
     case reportIssue
+    case startTvPairing
+    case tvPairingStatus(code: String)
 
     var path: String {
         switch self {
@@ -62,14 +64,18 @@ enum APIEndpoint {
             return "/auth/validate-iap"
         case .reportIssue:
             return "/feedback/report-issue"
+        case .startTvPairing:
+            return "/auth/tv/start-pairing"
+        case .tvPairingStatus(let code):
+            return "/auth/tv/pairing-status/\(code)"
         }
     }
 
     var method: HTTPMethod {
         switch self {
-        case .login, .logout, .connect, .disconnect, .forgotPassword, .verifyResetCode, .resetPassword, .registerStandard, .registerAnonymous, .handoffToken, .validateIAP, .reportIssue:
+        case .login, .logout, .connect, .disconnect, .forgotPassword, .verifyResetCode, .resetPassword, .registerStandard, .registerAnonymous, .handoffToken, .validateIAP, .reportIssue, .startTvPairing:
             return .POST
-        case .me, .servers, .appConfig, .announcements:
+        case .me, .servers, .appConfig, .announcements, .tvPairingStatus:
             return .GET
         case .deleteAccount:
             return .DELETE
@@ -78,7 +84,7 @@ enum APIEndpoint {
 
     var requiresAuth: Bool {
         switch self {
-        case .login, .appConfig, .announcements, .forgotPassword, .verifyResetCode, .resetPassword, .registerStandard, .registerAnonymous, .reportIssue:
+        case .login, .appConfig, .announcements, .forgotPassword, .verifyResetCode, .resetPassword, .registerStandard, .registerAnonymous, .reportIssue, .startTvPairing, .tvPairingStatus:
             return false
         case .logout, .me, .servers, .connect, .disconnect, .deleteAccount, .handoffToken, .validateIAP:
             return true

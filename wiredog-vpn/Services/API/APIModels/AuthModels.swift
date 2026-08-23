@@ -81,6 +81,18 @@ struct HandoffTokenResponse: Decodable {
     let expiresIn: Int
 }
 
+// MARK: - TV Pairing (tvOS only)
+
+struct TvPairingStartResponse: Decodable {
+    let code: String
+    let expiresIn: Int
+}
+
+struct TvPairingStatusResponse: Decodable {
+    let status: String
+    let token: String?
+}
+
 // MARK: - IAP Validation
 
 struct ValidateIAPRequest: Encodable {

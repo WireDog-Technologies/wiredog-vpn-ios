@@ -141,6 +141,15 @@ class AuthService: ObservableObject {
         }
     }
 
+    /// Brings published auth state in line with a token an out-of-band flow (TV pairing) has
+    /// already saved to the keychain, then fetches the profile — same effect as a normal login's
+    /// tail end, without repeating its request/response handling.
+    func signInWithStoredToken() async throws {
+        isAuthenticated = true
+        try await fetchUserProfile()
+        LogService.shared.logApp("User signed in (TV pairing)")
+    }
+
     func logout() async {
         isLoading = true
         defer { isLoading = false }

@@ -29,6 +29,9 @@ enum Config {
 
     static let getStartedURL: URL = URL(string: Bundle.main.infoDictionary?["WireDogURLGetStarted"] as? String ?? "https://www.example.com/get-started")!
 
+    // tvOS only: the QR code on the pairing screen deep-links here with a ?code= query item.
+    static let tvPairingURL: URL = URL(string: Bundle.main.infoDictionary?["WireDogURLTvPairing"] as? String ?? "https://www.example.com/tv-pairing")!
+
     // Must match the environment WIREDOG_API_BASE_URL points at — the checkout page
     // exchanges a handoff code against whichever API/DB minted it, so pointing this at
     // prod while running against the int API (or vice versa) always fails the exchange.
