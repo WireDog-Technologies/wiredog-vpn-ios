@@ -13,6 +13,10 @@ struct APIServer: Decodable, Identifiable {
     let latency: Int?
     let load: Int
     let host: String
+    // Set only on an organization member's "gateway" entry: their own named Dedicated IP on this
+    // node. `id` is still the node's real server id; gatewayId is passed back when connecting.
+    let gatewayId: Int?
+    let gatewayName: String?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -25,6 +29,8 @@ struct APIServer: Decodable, Identifiable {
         case latency
         case load
         case host
+        case gatewayId
+        case gatewayName
     }
 
     init(from decoder: Decoder) throws {
@@ -39,6 +45,8 @@ struct APIServer: Decodable, Identifiable {
         latency = try container.decodeIfPresent(Int.self, forKey: .latency)
         load = try container.decodeIfPresent(Int.self, forKey: .load) ?? 0
         host = try container.decodeIfPresent(String.self, forKey: .host) ?? ""
+        gatewayId = try container.decodeIfPresent(Int.self, forKey: .gatewayId)
+        gatewayName = try container.decodeIfPresent(String.self, forKey: .gatewayName)
     }
 }
 
@@ -49,12 +57,16 @@ struct ConnectRequest: Encodable {
     let localMode: Bool
     let blockAds: Bool
     let blockMalware: Bool
+    // Which of the organization's named Dedicated IP gateways was picked. Omitted for the shared
+    // network.
+    let dedicatedIpId: Int?
 
-    init(serverId: String, localMode: Bool = false, blockAds: Bool = true, blockMalware: Bool = true) {
+    init(serverId: String, localMode: Bool = false, blockAds: Bool = true, blockMalware: Bool = true, dedicatedIpId: Int? = nil) {
         self.serverId = serverId
         self.localMode = localMode
         self.blockAds = blockAds
         self.blockMalware = blockMalware
+        self.dedicatedIpId = dedicatedIpId
     }
 }
 

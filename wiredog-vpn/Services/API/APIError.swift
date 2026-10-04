@@ -9,6 +9,11 @@ enum APIError: LocalizedError {
     case notFound
     case rateLimited
     case deviceLimitReached
+    // 403s the backend tags with a machine-readable `code` (see APIClient). Plain 403s stay .forbidden.
+    case twoFactorSetupRequired
+    case twoFactorChallengeExpired
+    case serverNotAvailable
+    case subscriptionRequired
     case serverError(Int)
     case networkError(Error)
     case decodingError(Error)
@@ -33,6 +38,14 @@ enum APIError: LocalizedError {
             return "Too many requests. Please wait and try again."
         case .deviceLimitReached:
             return "You've reached your 5-device limit. Disconnect another device to continue."
+        case .twoFactorSetupRequired:
+            return "Your organization requires two-factor authentication. Set it up on your dashboard, then try again."
+        case .twoFactorChallengeExpired:
+            return "Your sign-in timed out. Please enter your password again."
+        case .serverNotAvailable:
+            return "Your organization does not have access to this location."
+        case .subscriptionRequired:
+            return "An active subscription is required to connect."
         case .serverError(let code):
             return "Server error (\(code)). Please try again later."
         case .networkError(let error):
@@ -50,7 +63,7 @@ enum APIError: LocalizedError {
         switch self {
         case .serverError, .rateLimited, .networkError:
             return true
-        case .invalidURL, .invalidResponse, .badRequest, .unauthorized, .forbidden, .notFound, .deviceLimitReached, .decodingError, .encodingError, .unknown:
+        case .invalidURL, .invalidResponse, .badRequest, .unauthorized, .forbidden, .notFound, .deviceLimitReached, .twoFactorSetupRequired, .twoFactorChallengeExpired, .serverNotAvailable, .subscriptionRequired, .decodingError, .encodingError, .unknown:
             return false
         }
     }

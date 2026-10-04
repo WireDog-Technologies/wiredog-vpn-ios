@@ -1,7 +1,10 @@
 import Foundation
 
 struct Server: Identifiable, Hashable, Codable {
-    let id: String  // API format: "CA-SFO-001" (StateCode-CityCode-Number)
+    // Unique per list entry. For a normal server this is the API server id ("CA-SFO-001"); for an
+    // organization gateway entry it is "<server id>_gw<gatewayId>", because the shared node and
+    // each named gateway on it appear as separate rows. Use `connectServerId` for API calls.
+    let id: String
     let countryName: String  // State name for US servers
     let countryCode: String  // State code
     let city: String?
@@ -12,6 +15,16 @@ struct Server: Identifiable, Hashable, Codable {
     let latitude: Double
     let longitude: Double
     var isFavorite: Bool
+    // Organization gateway entry (named Dedicated IP), nil for a normal server.
+    var gatewayId: Int? = nil
+    var gatewayName: String? = nil
+    // The node's real server id when `id` is the composite gateway id above.
+    var apiServerId: String? = nil
+
+    /// What /vpn/connect takes as `serverId`.
+    var connectServerId: String { apiServerId ?? id }
+
+    var isDedicated: Bool { gatewayId != nil }
 
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
@@ -29,7 +42,7 @@ struct Server: Identifiable, Hashable, Codable {
     /// Creates a Server from an API response
     static func from(apiServer: APIServer, isFavorite: Bool = false) -> Server {
         Server(
-            id: apiServer.id,
+            id: apiServer.gatewayId.map { "\(apiServer.id)_gw\($0)" } ?? apiServer.id,
             countryName: apiServer.state,
             countryCode: apiServer.stateCode,
             city: apiServer.city,
@@ -39,7 +52,10 @@ struct Server: Identifiable, Hashable, Codable {
             ipAddress: "",  // Not provided by API
             latitude: apiServer.latitude,
             longitude: apiServer.longitude,
-            isFavorite: isFavorite
+            isFavorite: isFavorite,
+            gatewayId: apiServer.gatewayId,
+            gatewayName: apiServer.gatewayName,
+            apiServerId: apiServer.gatewayId == nil ? nil : apiServer.id
         )
     }
 }

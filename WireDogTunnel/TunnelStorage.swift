@@ -5,13 +5,22 @@ import Foundation
 /// duplicated literals rather than shared constants (VPNService.swift / ServerStorage.swift aren't
 /// part of this target) — keep them in sync if either side's key ever changes:
 ///   - "lastConnectedServerId" ↔ ServerStorage.lastConnectedServerKey
+///   - "lastConnectedGatewayId" ↔ ServerStorage.lastConnectedGatewayKey
 ///   - "vpn_session_id" ↔ VPNService.sessionIdKey
 enum TunnelStorage {
     private static let lastConnectedServerKey = "lastConnectedServerId"
+    private static let lastConnectedGatewayKey = "lastConnectedGatewayId"
     private static let sessionIdKey = "vpn_session_id"
 
     static var lastConnectedServerId: String? {
         TunnelConfig.sharedDefaults.string(forKey: lastConnectedServerKey)
+    }
+
+    /// The organization's named Dedicated IP gateway the last connection used, nil for the shared
+    /// network. (UserDefaults.integer returns 0 for a missing key and real ids start at 1.)
+    static var lastConnectedGatewayId: Int? {
+        let id = TunnelConfig.sharedDefaults.integer(forKey: lastConnectedGatewayKey)
+        return id > 0 ? id : nil
     }
 
     static var sessionId: String? {

@@ -9,12 +9,12 @@ struct ServerInfoCard: View {
                 .font(.system(size: 32))
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(server.countryName)
+                Text(server.gatewayName ?? server.countryName)
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.vpnTextPrimary)
 
                 if let city = server.city {
-                    Text(city)
+                    Text(server.isDedicated ? "\(city), \(server.countryCode)" : city)
                         .font(.system(size: 12))
                         .foregroundColor(.vpnTextSecondary)
                 }
@@ -23,11 +23,11 @@ struct ServerInfoCard: View {
             Spacer()
 
             VStack(alignment: .trailing, spacing: 4) {
-                Text("Server ID")
+                Text(server.isDedicated ? "Type" : "Server ID")
                     .font(.system(size: 16))
                     .foregroundColor(.vpnTextSecondary)
 
-                Text(server.id)
+                Text(server.isDedicated ? "Dedicated" : server.id)
                     .font(.custom("Iosevka Term Extended", size: 14))
                     .fontWeight(.semibold)
                     .foregroundColor(.vpnPrimary)

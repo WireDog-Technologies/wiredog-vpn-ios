@@ -39,7 +39,7 @@ struct ConnectView: View {
             return "Loading..."
         }
         if vpnManager.connectionState == .connected, let server = vpnManager.selectedServer {
-            return "\(server.city ?? server.countryName), \(server.countryCode)"
+            return server.gatewayName ?? "\(server.city ?? server.countryName), \(server.countryCode)"
         }
         return vpnManager.currentLocation ?? "Unknown"
     }

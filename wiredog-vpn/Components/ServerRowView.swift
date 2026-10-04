@@ -23,17 +23,18 @@ struct ServerRowView: View {
                         .font(.system(size: 24))
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(server.countryName)
+                        // An organization gateway shows its own name; everything else is unchanged.
+                        Text(server.gatewayName ?? server.countryName)
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(.vpnTextPrimary)
 
                         if let city = server.city {
-                            Text(city)
+                            Text(server.isDedicated ? "\(city), \(server.countryCode)" : city)
                                 .font(.system(size: 13))
                                 .foregroundColor(.vpnTextSecondary)
                         }
 
-                        Text(server.id)
+                        Text(server.isDedicated ? "DEDICATED GATEWAY" : server.id)
                             .font(.custom("Iosevka Term Extended", size: 11))
                             .foregroundColor(.vpnPrimary)
                     }

@@ -4,6 +4,7 @@ enum HTTPMethod: String {
     case GET
     case POST
     case PUT
+    case PATCH
     case DELETE
 }
 
@@ -23,6 +24,10 @@ enum APIEndpoint {
     case registerStandard
     case registerAnonymous
     case handoffToken
+    case verifyTwoFactor
+    case loginLookup(identifier: String)
+    case ssoExchange
+    case changePassword
     case validateIAP
     case reportIssue
     case startTvPairing
@@ -60,6 +65,14 @@ enum APIEndpoint {
             return "/auth/register/anonymous"
         case .handoffToken:
             return "/auth/handoff-token"
+        case .verifyTwoFactor:
+            return "/auth/2fa/verify"
+        case .loginLookup:
+            return "/auth/login/lookup"
+        case .ssoExchange:
+            return "/auth/sso/exchange"
+        case .changePassword:
+            return "/auth/password"
         case .validateIAP:
             return "/auth/validate-iap"
         case .reportIssue:
@@ -73,20 +86,35 @@ enum APIEndpoint {
 
     var method: HTTPMethod {
         switch self {
-        case .login, .logout, .connect, .disconnect, .forgotPassword, .verifyResetCode, .resetPassword, .registerStandard, .registerAnonymous, .handoffToken, .validateIAP, .reportIssue, .startTvPairing:
+        case .login, .verifyTwoFactor, .ssoExchange, .logout, .connect, .disconnect, .forgotPassword, .verifyResetCode, .resetPassword, .registerStandard, .registerAnonymous, .handoffToken, .validateIAP, .reportIssue, .startTvPairing:
             return .POST
-        case .me, .servers, .appConfig, .announcements, .tvPairingStatus:
+        case .me, .servers, .appConfig, .announcements, .tvPairingStatus, .loginLookup:
             return .GET
         case .deleteAccount:
             return .DELETE
+        case .changePassword:
+            return .PATCH
+        }
+    }
+
+    var queryItems: [URLQueryItem] {
+        switch self {
+        case .loginLookup(let identifier):
+            return [URLQueryItem(name: "identifier", value: identifier)]
+        case .servers:
+            // Opt in to organization "gateway" entries (named Dedicated IPs). Older clients omit
+            // this and the backend keeps returning the plain list for them.
+            return [URLQueryItem(name: "gateways", value: "1")]
+        default:
+            return []
         }
     }
 
     var requiresAuth: Bool {
         switch self {
-        case .login, .appConfig, .announcements, .forgotPassword, .verifyResetCode, .resetPassword, .registerStandard, .registerAnonymous, .reportIssue, .startTvPairing, .tvPairingStatus:
+        case .login, .verifyTwoFactor, .loginLookup, .ssoExchange, .appConfig, .announcements, .forgotPassword, .verifyResetCode, .resetPassword, .registerStandard, .registerAnonymous, .reportIssue, .startTvPairing, .tvPairingStatus:
             return false
-        case .logout, .me, .servers, .connect, .disconnect, .deleteAccount, .handoffToken, .validateIAP:
+        case .logout, .me, .servers, .connect, .disconnect, .deleteAccount, .handoffToken, .changePassword, .validateIAP:
             return true
         }
     }

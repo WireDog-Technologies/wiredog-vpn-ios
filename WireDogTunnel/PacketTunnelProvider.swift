@@ -48,7 +48,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
 
         Task {
             do {
-                let result = try await TunnelAPIClient.connect(token: token, serverId: serverId)
+                let result = try await TunnelAPIClient.connect(token: token, serverId: serverId, dedicatedIpId: TunnelStorage.lastConnectedGatewayId)
                 TunnelStorage.sessionId = result.sessionId
                 TunnelStandaloneConnectBackoff.recordSuccess()
                 NSLog("[WireDog] Standalone /connect succeeded, starting tunnel")

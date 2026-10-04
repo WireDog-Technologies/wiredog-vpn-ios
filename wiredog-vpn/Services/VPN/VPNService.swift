@@ -49,6 +49,9 @@ class VPNService: ObservableObject {
 
     @Published var connectionState: ConnectionState = .disconnected
     @Published var currentServerId: String?
+    // The organization gateway (named Dedicated IP) the current connection uses, if any. Kept so
+    // auto-reconnect goes back through the same gateway instead of the shared network.
+    private(set) var currentGatewayId: Int?
     @Published var sessionId: String?
     @Published var statistics: TunnelStatistics?
     @Published var error: VPNError?
@@ -242,7 +245,7 @@ class VPNService: ObservableObject {
 
     // MARK: - Connection Methods
 
-    func connect(serverId: String, killSwitchEnabled: Bool, ipv6Enabled: Bool = true, lanAccessEnabled: Bool = true, blockAdsEnabled: Bool = true, blockMalwareEnabled: Bool = true) async throws {
+    func connect(serverId: String, gatewayId: Int? = nil, killSwitchEnabled: Bool, ipv6Enabled: Bool = true, lanAccessEnabled: Bool = true, blockAdsEnabled: Bool = true, blockMalwareEnabled: Bool = true) async throws {
         LogService.shared.logService("Connect initiated for server \(serverId)")
 
         guard connectionState == .disconnected || isReconnecting else {
@@ -297,7 +300,7 @@ class VPNService: ObservableObject {
 
         do {
             // Phase 1: Fetch WireGuard configuration from API
-            let connectRequest = ConnectRequest(serverId: serverId, blockAds: blockAdsEnabled, blockMalware: blockMalwareEnabled)
+            let connectRequest = ConnectRequest(serverId: serverId, blockAds: blockAdsEnabled, blockMalware: blockMalwareEnabled, dedicatedIpId: gatewayId)
             let response: ConnectResponse = try await apiClient.request(
                 endpoint: .connect,
                 body: connectRequest
@@ -308,9 +311,10 @@ class VPNService: ObservableObject {
             self.sessionId = response.sessionId
             Self.sharedDefaults.set(response.sessionId, forKey: Self.sessionIdKey)
             self.currentServerId = serverId
+            self.currentGatewayId = gatewayId
             // Lets the WireDogTunnel extension know which server to reconnect to if it's ever
             // started standalone (e.g. from iOS Settings > VPN) rather than through the app.
-            ServerStorage.setLastConnectedServer(serverId)
+            ServerStorage.setLastConnectedServer(serverId, gatewayId: gatewayId)
             LogService.shared.logService("Connecting to server \(serverId)")
 
             // Phase 2: Build WireGuard configuration
@@ -432,6 +436,7 @@ class VPNService: ObservableObject {
         Self.sharedDefaults.removeObject(forKey: Self.sessionIdKey)
         if !isReconnecting {
             self.currentServerId = nil
+            self.currentGatewayId = nil
         }
     }
 
@@ -509,6 +514,7 @@ class VPNService: ObservableObject {
         self.sessionId = nil
         Self.sharedDefaults.removeObject(forKey: Self.sessionIdKey)
         self.currentServerId = nil
+        self.currentGatewayId = nil
         self.connectedSince = nil
 
         // Disable kill switch before stopping tunnel so the user has internet while disconnected.
@@ -705,6 +711,7 @@ class VPNService: ObservableObject {
                     Self.sharedDefaults.removeObject(forKey: Self.sessionIdKey)
                 }
                 currentServerId = nil
+                currentGatewayId = nil
             }
             return
         }
@@ -727,6 +734,7 @@ class VPNService: ObservableObject {
             do {
                 try await connect(
                     serverId: serverId,
+                    gatewayId: currentGatewayId,
                     killSwitchEnabled: lastKillSwitchEnabled,
                     ipv6Enabled: lastIPv6Enabled,
                     lanAccessEnabled: lastLANAccessEnabled,
@@ -741,6 +749,7 @@ class VPNService: ObservableObject {
                 isReconnecting = false
                 reconnectAttempts = 0
                 currentServerId = nil
+                currentGatewayId = nil
                 if let staleSessionId = sessionId {
                     cleanupOrphanedSession(staleSessionId, reason: "reconnect aborted — another VPN active")
                     sessionId = nil

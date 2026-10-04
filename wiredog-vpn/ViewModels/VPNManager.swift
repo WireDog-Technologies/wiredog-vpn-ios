@@ -193,6 +193,21 @@ class VPNManager: ObservableObject {
             }
             .store(in: &cancellables)
 
+        // The server list depends on who is signed in: an organization member on a
+        // dedicated-network-only plan gets a different list than the public one. The list is also
+        // fetched at launch, before anyone has signed in, so drop the cache whenever auth flips
+        // and reload.
+        authService.$isAuthenticated
+            .removeDuplicates()
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self = self else { return }
+                self.serverCacheTimestamp = nil
+                Task { await self.loadServers() }
+            }
+            .store(in: &cancellables)
+
         // Bind connection health
         vpnService.$isConnectionHealthy
             .receive(on: DispatchQueue.main)
@@ -255,7 +270,9 @@ class VPNManager: ObservableObject {
             updateServerFavoriteStates()
             updateRecommendedServers()
 
-            if selectedServer == nil {
+            // Also re-pick when the current selection is no longer offered (e.g. the account just
+            // changed and the new list is restricted to the organization's own servers).
+            if selectedServer == nil || !availableServers.contains(where: { $0.id == selectedServer?.id }) {
                 if let lastServerId = UserDefaults.standard.string(forKey: Self.lastConnectedServerKey),
                    let lastServer = availableServers.first(where: { $0.id == lastServerId }) {
                     selectedServer = lastServer
@@ -265,6 +282,12 @@ class VPNManager: ObservableObject {
             }
 
             LogService.shared.logApp("[VPNManager] Servers loaded from API (\(availableServers.count) servers)")
+
+            // The public fleet is never empty, so an empty list for a signed-in account means a
+            // business plan restricted to the organization's own network with no location set up.
+            if availableServers.isEmpty && authService.isAuthenticated {
+                errorMessage = "No locations are available for your account yet. If you're on a business plan, contact your organization's administrator."
+            }
 
         } catch let apiError as APIError {
             if case .unauthorized = apiError {
@@ -383,13 +406,24 @@ class VPNManager: ObservableObject {
                     return
                 }
 
-                var isSubscriptionActive = userProfile.subscriptionExpiresAt.map { $0 > Date() } ?? false
+                // hasEntitlement, not a bare expiry check: an organization seat can have no expiry
+                // date of its own, and its access is carried by /auth/me's isActive instead.
+                var isSubscriptionActive = userProfile.hasEntitlement
                 if !isSubscriptionActive {
                     try? await authService.fetchUserProfile()
-                    isSubscriptionActive = authService.currentUser?.subscriptionExpiresAt.map { $0 > Date() } ?? false
+                    isSubscriptionActive = authService.currentUser?.hasEntitlement ?? false
                 }
 
                 guard isSubscriptionActive else {
+                    // An organization used to cover this account and no longer does: say so,
+                    // rather than showing a personal paywall that would not fix an employer-side
+                    // problem. (A revoked person who wants personal service can subscribe from
+                    // Manage Account on the website.)
+                    if let lost = authService.currentUser?.lostOrganizationAccess {
+                        LogService.shared.logApp("[VPNManager] Connect blocked: organization access \(lost.rawValue)", level: .warning)
+                        errorMessage = lost.userMessage
+                        return
+                    }
                     LogService.shared.logApp("[VPNManager] Connect failed: subscription not active", level: .error)
                     pendingServer = server
                     needsSubscription = true
@@ -419,7 +453,8 @@ class VPNManager: ObservableObject {
                 }
 
                 try await vpnService.connect(
-                    serverId: server.id,
+                    serverId: server.connectServerId,
+                    gatewayId: server.gatewayId,
                     killSwitchEnabled: settings.isKillSwitchEnabled,
                     ipv6Enabled: settings.isIPv6Enabled,
                     lanAccessEnabled: settings.isLANAccessEnabled,

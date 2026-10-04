@@ -14,8 +14,17 @@ class ServerStorage {
         UserDefaults(suiteName: Config.appGroupIdentifier) ?? .standard
     }
 
-    static func setLastConnectedServer(_ serverId: String) {
+    // Read by the extension next to lastConnectedServerKey: which of the organization's named
+    // Dedicated IP gateways the last connection used (absent = shared network).
+    static let lastConnectedGatewayKey = "lastConnectedGatewayId"
+
+    static func setLastConnectedServer(_ serverId: String, gatewayId: Int? = nil) {
         userDefaults.set(serverId, forKey: lastConnectedServerKey)
+        if let gatewayId {
+            userDefaults.set(gatewayId, forKey: lastConnectedGatewayKey)
+        } else {
+            userDefaults.removeObject(forKey: lastConnectedGatewayKey)
+        }
     }
 
     static func addRecentServer(_ serverId: String) {

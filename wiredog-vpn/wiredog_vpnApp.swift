@@ -49,7 +49,15 @@ struct wiredog_vpnApp: App {
         if !hasAcceptedDisclosure {
             PrivacyDisclosureView()
         } else if authService.isAuthenticated {
-            MainTabView(vpnManager: vpnManager)
+            // Business accounts can be gated before the app opens. Same order as the website's
+            // dashboard: replace the temporary password first, then the org-required 2FA setup.
+            if authService.currentUser?.mustChangePassword == true {
+                ForcedPasswordChangeView()
+            } else if let user = authService.currentUser, user.twoFactorRequiredByOrg, !user.totpEnabled {
+                TwoFactorSetupRequiredView()
+            } else {
+                MainTabView(vpnManager: vpnManager)
+            }
         } else {
             LoginView()
         }
