@@ -212,11 +212,13 @@ class VPNService: ObservableObject {
         }
 
         if enabled {
-            // Enable kill switch via includeAllNetworks (iOS 14+)
+            // Enable kill switch via includeAllNetworks (iOS 14+; unavailable on tvOS)
+            #if os(iOS)
             if #available(iOS 14.0, *) {
                 protocolConfig.includeAllNetworks = true
                 protocolConfig.excludeLocalNetworks = lanAccessEnabled
             }
+            #endif
 
             // Configure on-demand rules for always-on VPN
             let connectRule = NEOnDemandRuleConnect()
@@ -226,10 +228,12 @@ class VPNService: ObservableObject {
             manager.isOnDemandEnabled = true
         } else {
             // Disable kill switch
+            #if os(iOS)
             if #available(iOS 14.0, *) {
                 protocolConfig.includeAllNetworks = false
                 protocolConfig.excludeLocalNetworks = false
             }
+            #endif
 
             manager.onDemandRules = []
             manager.isOnDemandEnabled = false
@@ -433,8 +437,8 @@ class VPNService: ObservableObject {
 
     /// Starts our tunnel, auto-swapping in for whatever VPN (ours or another app's) is currently
     /// active. iOS enforces a single active tunnel system-wide, so simply starting our own tunnel
-    /// is normally enough for the OS to preempt the other one — this is how Proton VPN and other
-    /// VPN apps handle switching. NEVPNError.configurationDisabled on the first attempt usually
+    /// is normally enough for the OS to preempt the other one — this is the standard way VPN apps
+    /// handle switching on iOS. NEVPNError.configurationDisabled on the first attempt usually
     /// means our own manager's `isEnabled` flag had drifted to false (e.g. iOS reacting to another
     /// VPN app's config being edited/activated), not that the swap itself is disallowed — so we
     /// re-assert `isEnabled`, re-save/reload, and retry once before surfacing it as a real error.
