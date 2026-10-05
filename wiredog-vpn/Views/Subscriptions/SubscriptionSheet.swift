@@ -14,6 +14,7 @@ struct SubscriptionSheet: View {
     /// so a network hiccup never dead-ends the funnel entirely.
     private func startCheckout() async {
         guard !isRequestingCheckout else { return }
+        MilestoneService.shared.record(.paywallCheckoutTapped)
         isRequestingCheckout = true
         defer { isRequestingCheckout = false }
 
@@ -118,6 +119,7 @@ struct SubscriptionSheet: View {
                             }
 
                             Button {
+                                MilestoneService.shared.record(.paywallBetterPlansTapped)
                                 UIApplication.shared.open(Config.pricingURL)
                             } label: {
                                 Text("See Better Plans")
@@ -148,6 +150,7 @@ struct SubscriptionSheet: View {
 
                 // Anchored to bottom
                 Button {
+                    MilestoneService.shared.record(.paywallAppStoreOpened)
                     showAppStorePlans = true
                 } label: {
                     Text("Get App Store Plans")
@@ -282,6 +285,7 @@ struct AppStorePlansSheet: View {
                     }
 
                     Button {
+                        MilestoneService.shared.record(.iapAllPlansTapped)
                         UIApplication.shared.open(Config.pricingURL)
                     } label: {
                         Text("See All Plans")
@@ -342,6 +346,7 @@ struct AppStorePlansSheet: View {
         isPurchasing = true
         defer { isPurchasing = false }
 
+        MilestoneService.shared.record(.iapPurchaseStarted)
         let result = await iapService.purchase(product)
         switch result {
         case .success:

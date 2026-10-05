@@ -434,6 +434,10 @@ class VPNManager: ObservableObject {
                         return
                     }
                     LogService.shared.logApp("[VPNManager] Connect failed: subscription not active", level: .error)
+                    // Every manual connect path (power button, server tap, Settings toggle) ends
+                    // here for an unpaid account, and auto-connect can't — it needs a server that
+                    // was connected to before — so this is "tried to connect, got the paywall".
+                    MilestoneService.shared.record(.connectAttempted)
                     pendingServer = server
                     needsSubscription = true
                     return

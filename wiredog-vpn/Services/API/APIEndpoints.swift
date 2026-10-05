@@ -24,6 +24,7 @@ enum APIEndpoint {
     case registerStandard
     case registerAnonymous
     case handoffToken
+    case milestones
     case verifyTwoFactor
     case loginLookup(identifier: String)
     case ssoExchange
@@ -65,6 +66,8 @@ enum APIEndpoint {
             return "/auth/register/anonymous"
         case .handoffToken:
             return "/auth/handoff-token"
+        case .milestones:
+            return "/auth/milestones"
         case .verifyTwoFactor:
             return "/auth/2fa/verify"
         case .loginLookup:
@@ -86,7 +89,7 @@ enum APIEndpoint {
 
     var method: HTTPMethod {
         switch self {
-        case .login, .verifyTwoFactor, .ssoExchange, .logout, .connect, .disconnect, .forgotPassword, .verifyResetCode, .resetPassword, .registerStandard, .registerAnonymous, .handoffToken, .validateIAP, .reportIssue, .startTvPairing:
+        case .login, .verifyTwoFactor, .ssoExchange, .logout, .connect, .disconnect, .forgotPassword, .verifyResetCode, .resetPassword, .registerStandard, .registerAnonymous, .handoffToken, .milestones, .validateIAP, .reportIssue, .startTvPairing:
             return .POST
         case .me, .servers, .appConfig, .announcements, .tvPairingStatus, .loginLookup:
             return .GET
@@ -114,7 +117,7 @@ enum APIEndpoint {
         switch self {
         case .login, .verifyTwoFactor, .loginLookup, .ssoExchange, .appConfig, .announcements, .forgotPassword, .verifyResetCode, .resetPassword, .registerStandard, .registerAnonymous, .reportIssue, .startTvPairing, .tvPairingStatus:
             return false
-        case .logout, .me, .servers, .connect, .disconnect, .deleteAccount, .handoffToken, .changePassword, .validateIAP:
+        case .logout, .me, .servers, .connect, .disconnect, .deleteAccount, .handoffToken, .milestones, .changePassword, .validateIAP:
             return true
         }
     }
