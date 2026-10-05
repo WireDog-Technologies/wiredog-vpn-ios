@@ -162,7 +162,10 @@ class VPNManager: ObservableObject {
                     self.stopTimer()
                     self.connectionDuration = 0
                     self.resetStats()
-                    Task { await self.fetchPublicIPOnDisconnect() }
+                    Task {
+                        await self.fetchPublicIPOnDisconnect()
+                        await self.measureLatencies()
+                    }
                 }
             }
             .store(in: &cancellables)
@@ -313,8 +316,14 @@ class VPNManager: ObservableObject {
     }
 
     /// Measures fresh latencies for all servers and updates the UI.
+    /// Only runs while disconnected: probes made with the tunnel up are routed through the
+    /// connected node, which inflates every server's latency. While connected, the last
+    /// pre-connect values (and persisted cache) are left untouched.
     func measureLatencies() async {
+        guard connectionState == .disconnected else { return }
         let fresh = await LatencyService.shared.measureAll(availableServers)
+        // A connect may have started mid-measurement; those samples are tunnel-skewed.
+        guard connectionState == .disconnected else { return }
         guard !fresh.isEmpty else { return }
         await LatencyService.shared.saveCache(fresh)
         applyLatencies(fresh, to: &availableServers)

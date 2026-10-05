@@ -53,6 +53,15 @@ struct ProfileView: View {
         authService.currentUser?.isOrganizationMember ?? false
     }
 
+    /// Opens the website dashboard already signed in via a one-time handoff code. Falls back to
+    /// the plain dashboard URL (which asks the user to sign in) if the code can't be minted.
+    private func openDashboard() {
+        Task {
+            let url = (try? await authService.dashboardHandoffURL()) ?? Config.dashboardURL
+            openURL(url)
+        }
+    }
+
     var body: some View {
         ZStack {
             Color.vpnBackground
@@ -242,7 +251,7 @@ struct ProfileView: View {
 
                     // Manage Account Button
                     Button(action: {
-                        openURL(Config.dashboardURL)
+                        openDashboard()
                     }) {
                         HStack {
                             Image(systemName: "person.crop.circle")

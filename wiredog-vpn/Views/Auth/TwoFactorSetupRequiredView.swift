@@ -67,7 +67,7 @@ struct TwoFactorSetupRequiredView: View {
 
     private var message: String {
         let org = authService.currentUser?.organizationName.map { "\($0) requires" } ?? "Your organization requires"
-        return "\(org) two-factor authentication on your account. Open your dashboard, turn on two-factor authentication, then come back here."
+        return "\(org) two-factor authentication on your account. Open your dashboard, set up two-factor authentication, then come back here."
     }
 
     /// Opens the website dashboard already signed in (one-time handoff code), so the setup wizard
@@ -75,7 +75,7 @@ struct TwoFactorSetupRequiredView: View {
     /// asks them to sign in, if the code can't be minted (e.g. offline).
     private func openDashboard() {
         Task {
-            let url = (try? await authService.dashboardHandoffURL()) ?? Config.dashboardURL
+            let url = (try? await authService.dashboardHandoffURL()) ?? Config.dashboardHandoffURL
             openURL(url)
         }
     }

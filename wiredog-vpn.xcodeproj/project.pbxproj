@@ -137,7 +137,7 @@
 				Components/ServerSelectorSheet.swift,
 				Info.plist,
 				"IosevkaTerm-Extended.ttf",
-				"Preview Content",
+				map.svg,
 				Services/BroadcastService.swift,
 				Services/IAP/IAPService.swift,
 				Utilities/SVGView.swift,
@@ -152,17 +152,14 @@
 				Views/MainTabView.swift,
 				Views/Servers/ServersView.swift,
 				Views/Settings/ChangeLogView.swift,
-				Views/Settings/LogViewerView.swift,
 				Views/Settings/LogsView.swift,
+				Views/Settings/LogViewerView.swift,
 				Views/Settings/ProfileView.swift,
 				Views/Settings/ReportBugView.swift,
 				Views/Settings/ReportIssueView.swift,
 				Views/Settings/SettingsView.swift,
 				Views/Shared/ReviewPromptView.swift,
 				Views/Subscriptions/SubscriptionSheet.swift,
-				map.svg,
-				"wiredog-vpn.entitlements",
-				"wiredog-vpnDebug.entitlements",
 				wiredog_vpnApp.swift,
 			);
 			target = 747385CFA7CA38D0395A81BB /* WireDogTV */;
@@ -190,15 +187,11 @@
 		};
 		307BA79C2F130954007DB552 /* wiredog-vpnTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = "wiredog-vpnTests";
 			sourceTree = "<group>";
 		};
 		307BA7A62F130955007DB552 /* wiredog-vpnUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = "wiredog-vpnUITests";
 			sourceTree = "<group>";
 		};
@@ -305,7 +298,6 @@
 				5AC91B2EE4DAF5CBC7577EF0 /* WireDogTunnelTVDebug.entitlements */,
 				A67805D428932AD565387E2F /* libwg-go.a */,
 			);
-			name = WireDogTunnelTV;
 			path = WireDogTunnelTV;
 			sourceTree = "<group>";
 		};
@@ -317,7 +309,6 @@
 				8F0BD19C0EB6B8A373ED341D /* WireDogTV.entitlements */,
 				6CE846421EA007045E089C0C /* Assets.xcassets */,
 			);
-			name = "wiredog-tv";
 			path = "wiredog-tv";
 			sourceTree = "<group>";
 		};
@@ -1026,6 +1017,7 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/WireDogTunnelTV/Frameworks",
+					"$(PROJECT_DIR)/WireDogTunnel/Frameworks",
 				);
 				MARKETING_VERSION = 1.7.0;
 				"OTHER_LDFLAGS[sdk=appletvos*]" = (
@@ -1063,6 +1055,7 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/WireDogTunnelTV/Frameworks",
+					"$(PROJECT_DIR)/WireDogTunnel/Frameworks",
 				);
 				MARKETING_VERSION = 1.7.0;
 				"OTHER_LDFLAGS[sdk=appletvos*]" = (

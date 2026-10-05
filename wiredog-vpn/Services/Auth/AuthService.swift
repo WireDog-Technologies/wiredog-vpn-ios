@@ -431,7 +431,7 @@ class AuthService: ObservableObject {
     /// Same one-time-code handoff, landing on the account dashboard. Used to send an employee to
     /// the website to turn on org-required 2FA without signing in a second time.
     func dashboardHandoffURL() async throws -> URL {
-        try await handoffURL(for: Config.dashboardURL)
+        try await handoffURL(for: Config.dashboardHandoffURL)
     }
 
     private func handoffURL(for destination: URL) async throws -> URL {
