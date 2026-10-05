@@ -7,10 +7,22 @@ import Foundation
 ///   - "lastConnectedServerId" ↔ ServerStorage.lastConnectedServerKey
 ///   - "lastConnectedGatewayId" ↔ ServerStorage.lastConnectedGatewayKey
 ///   - "vpn_session_id" ↔ VPNService.sessionIdKey
+///   - "vpn_exit_ip" ↔ VPNService.exitIPKey ([sessionId: exitIp])
 enum TunnelStorage {
     private static let lastConnectedServerKey = "lastConnectedServerId"
     private static let lastConnectedGatewayKey = "lastConnectedGatewayId"
     private static let sessionIdKey = "vpn_session_id"
+    private static let exitIPKey = "vpn_exit_ip"
+
+    /// Records the exit IP the backend assigned to a session this extension started, so the app
+    /// can show it without an ipify lookup.
+    static func setExitIP(_ exitIP: String?, forSession sessionId: String) {
+        if let exitIP, !exitIP.isEmpty {
+            TunnelConfig.sharedDefaults.set([sessionId: exitIP], forKey: exitIPKey)
+        } else {
+            TunnelConfig.sharedDefaults.removeObject(forKey: exitIPKey)
+        }
+    }
 
     static var lastConnectedServerId: String? {
         TunnelConfig.sharedDefaults.string(forKey: lastConnectedServerKey)

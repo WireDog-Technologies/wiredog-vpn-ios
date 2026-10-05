@@ -124,7 +124,7 @@ struct ConnectView: View {
                                 .font(.system(size: 12))
                                 .foregroundColor(.vpnTextSecondary)
 
-                            Text(isTransitioning ? "Loading..." : (vpnManager.publicIP ?? "Loading..."))
+                            Text(isTransitioning ? "Loading..." : (vpnManager.publicIP ?? (vpnManager.connectionState == .connected ? "Unknown" : "Loading...")))
                                 .font(.custom("Iosevka Term Extended", size: 16))
                                 .foregroundColor(vpnManager.connectionState == .connected ? statusColor : .vpnRed)
                         }

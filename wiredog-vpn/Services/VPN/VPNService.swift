@@ -310,6 +310,7 @@ class VPNService: ObservableObject {
             // If it can, migrate this to Keychain (same pattern as auth token in KeychainService).
             self.sessionId = response.sessionId
             Self.sharedDefaults.set(response.sessionId, forKey: Self.sessionIdKey)
+            Self.storeExitIP(response.server?.exitIp, forSession: response.sessionId)
             self.currentServerId = serverId
             self.currentGatewayId = gatewayId
             // Lets the WireDogTunnel extension know which server to reconnect to if it's ever
@@ -586,6 +587,30 @@ class VPNService: ObservableObject {
     /// WireDogTunnel extension can now originate its own session (a Settings-app-initiated connect)
     /// and needs the app's crash-recovery reconciliation in loadVPNManager() to see it too.
     nonisolated static let sessionIdKey = "vpn_session_id"
+    /// [sessionId: exitIp] for the most recent session, written by whichever side (app or
+    /// WireDogTunnel extension) called /connect. Keyed by session so a value left behind by any of
+    /// the session-clearing paths can never be shown for a different session.
+    nonisolated static let exitIPKey = "vpn_exit_ip"
+
+    /// The exit IP the backend assigned to the current session, if known. Shown in place of an
+    /// ipify lookup so the exit IP is never sent to a third party.
+    var currentExitIP: String? {
+        // Shared value first: a session the extension started on its own (iOS Settings, on-demand)
+        // is only in shared storage until the app next relaunches.
+        guard let sessionId = Self.sharedDefaults.string(forKey: Self.sessionIdKey) ?? sessionId,
+              let stored = Self.sharedDefaults.dictionary(forKey: Self.exitIPKey) as? [String: String] else {
+            return nil
+        }
+        return stored[sessionId]
+    }
+
+    private nonisolated static func storeExitIP(_ exitIP: String?, forSession sessionId: String) {
+        if let exitIP, !exitIP.isEmpty {
+            sharedDefaults.set([sessionId: exitIP], forKey: exitIPKey)
+        } else {
+            sharedDefaults.removeObject(forKey: exitIPKey)
+        }
+    }
     private nonisolated static var sharedDefaults: UserDefaults {
         UserDefaults(suiteName: Config.appGroupIdentifier) ?? .standard
     }

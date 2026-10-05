@@ -115,7 +115,11 @@ struct ServerInfo: Decodable {
     let id: String
     let city: String?
     let stateCode: String?
+    // The server's own endpoint address — not what websites see. Use exitIp for that.
     let ipAddress: String?
+    // The exit IP the backend assigned to this session (shared pool or Dedicated IP). Optional so
+    // an older backend that omits it still decodes.
+    let exitIp: String?
 }
 
 // MARK: - Disconnect Request

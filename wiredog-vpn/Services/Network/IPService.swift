@@ -37,6 +37,8 @@ class IPService {
 
     /// Fetches the current public IP address
     func getPublicIP() async throws -> String {
+        // Event only, never the IP — makes any third-party IP lookup visible in View Logs.
+        LogService.shared.logApp("[IPService] ipify lookup")
         let (data, _) = try await session.data(from: ipifyURL)
         let response = try JSONDecoder().decode(IPResponse.self, from: data)
         return response.ip

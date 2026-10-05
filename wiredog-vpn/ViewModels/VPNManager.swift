@@ -116,11 +116,16 @@ class VPNManager: ObservableObject {
         // Load initial data
         Task {
             await loadServers()
-            await fetchPublicIP()
-            if self.originalIP == nil, let currentIP = self.publicIP {
-                self.originalIP = currentIP
+            // Skip the ipify/ipapi lookups when the app launches with the tunnel already up: they
+            // would go out through the tunnel and hand the exit IP to a third party (and record it
+            // as the "original" IP). The .connected binding fills publicIP from the backend instead.
+            if vpnService.connectionState == .disconnected {
+                await fetchPublicIP()
+                if self.originalIP == nil, let currentIP = self.publicIP {
+                    self.originalIP = currentIP
+                }
+                await fetchGeoLocation()
             }
-            await fetchGeoLocation()
             await measureLatencies()
             startLatencyPolling()
         }
@@ -617,14 +622,13 @@ class VPNManager: ObservableObject {
         currentLocation = await ipService.getGeoLocation()
     }
 
+    /// Uses the exit IP the backend assigned in the /vpn/connect response rather than asking ipify
+    /// through the tunnel, so the exit IP never reaches a third party. No fallback lookup: if the
+    /// backend didn't return one, the UI shows "Unknown".
     private func fetchPublicIPOnConnect() async {
-        isFetchingNetworkInfo = true
         ipService.clearGeoCache()
-        await ipService.resetConnections()
-        let newIP = await ipService.getPublicIPSafe()
-        publicIP = newIP
-        isFetchingNetworkInfo = false
-        LogService.shared.logApp("[VPNManager] Connected - VPN IP assigned")
+        publicIP = vpnService.currentExitIP
+        LogService.shared.logApp("[VPNManager] Connected - VPN IP \(publicIP == nil ? "unknown" : "assigned")")
     }
 
     private func fetchPublicIPOnDisconnect() async {

@@ -14,6 +14,7 @@ enum TunnelAPIError: Error {
 struct TunnelConnectResult {
     let wgConfig: String
     let sessionId: String
+    let exitIp: String?
 }
 
 enum TunnelAPIClient {
@@ -77,7 +78,8 @@ enum TunnelAPIClient {
             throw TunnelAPIError.decodingFailed
         }
 
-        return TunnelConnectResult(wgConfig: wgConfig, sessionId: sessionId)
+        let exitIp = (json["server"] as? [String: Any])?["exitIp"] as? String
+        return TunnelConnectResult(wgConfig: wgConfig, sessionId: sessionId, exitIp: exitIp)
     }
 
     static func disconnect(token: String, sessionId: String) async throws {
