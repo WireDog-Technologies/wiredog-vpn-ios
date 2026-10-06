@@ -982,8 +982,11 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = "App Icon & Top Shelf Image";
 				CODE_SIGN_ENTITLEMENTS = "wiredog-tv/WireDogTV.entitlements";
-				CODE_SIGN_STYLE = Automatic;
+				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "iPhone Distribution";
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 14;
+				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=appletvos*]" = 48P557G374;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "wiredog-tv/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "WireDog TV";
@@ -995,6 +998,8 @@
 				MARKETING_VERSION = 1.8.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.wiredog.vpn.tv;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=appletvos*]" = "WireDog tvOS App Store";
 				SDKROOT = appletvos;
 				SUPPORTED_PLATFORMS = "appletvos appletvsimulator";
 				SWIFT_VERSION = 5.0;
@@ -1009,8 +1014,11 @@
 			baseConfigurationReference = 366D6C6893D9EDD2B176E4D9 /* Config-TV-Release.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = WireDogTunnelTV/WireDogTunnelTV.entitlements;
-				CODE_SIGN_STYLE = Automatic;
+				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "iPhone Distribution";
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 14;
+				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=appletvos*]" = 48P557G374;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WireDogTunnelTV/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = WireDogTunnelTV;
@@ -1029,6 +1037,8 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.wiredog.vpn.tv.tunnel;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=appletvos*]" = "WireDog tvOS App Store (Tunnel)";
 				SDKROOT = appletvos;
 				SKIP_INSTALL = YES;
 				SUPPORTED_PLATFORMS = "appletvos appletvsimulator";
