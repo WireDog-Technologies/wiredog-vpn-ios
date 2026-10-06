@@ -9,6 +9,10 @@
 		<key>NSExtensionPrincipalClass</key>
 		<string>$(PRODUCT_MODULE_NAME).PacketTunnelProvider</string>
 	</dict>
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>arm64</string>
+	</array>
 	<key>WireDogAPIBaseURL</key>
 	<string>$(WIREDOG_API_BASE_URL)</string>
 	<key>WireDogAppGroupID</key>
