@@ -65,7 +65,12 @@ struct TVHomeView: View {
                 .cornerRadius(12)
             }
 
-            Button(action: { vpnManager.toggleConnection() }) {
+            Button(action: {
+                // Cleared on each press so the message below goes away once the account has been
+                // subscribed on the web; a still-unpaid account sets it again inside toggleConnection.
+                vpnManager.needsSubscription = false
+                vpnManager.toggleConnection()
+            }) {
                 Text(connectButtonTitle)
                     .font(.title3.weight(.semibold))
                     .frame(width: 260, height: 56)
@@ -74,6 +79,15 @@ struct TVHomeView: View {
             .tint(vpnManager.statusColor)
             .padding(.top, 4)
             .tvPrefersDefaultFocus(in: focusNamespace)
+
+            // iOS answers needsSubscription with the IAP sheet; the TV app has no purchase flow, so it
+            // just says why Connect did nothing (deliberately no pricing or purchase link).
+            if vpnManager.needsSubscription {
+                Text("Your account doesn't have an active subscription.")
+                    .font(.callout)
+                    .foregroundColor(.vpnRed)
+                    .frame(maxWidth: 600, alignment: .leading)
+            }
 
             if let error = vpnManager.errorMessage {
                 Text(error)
@@ -205,6 +219,7 @@ struct TVHomeView: View {
     // if already connected, per VPNManager.selectServer) and, if idle, immediately connect too
     // instead of requiring a second tap on the status button.
     private func select(_ server: Server) {
+        vpnManager.needsSubscription = false
         vpnManager.selectServer(server)
         if vpnManager.connectionState == .disconnected {
             vpnManager.toggleConnection()
