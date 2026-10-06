@@ -980,6 +980,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 366D6C6893D9EDD2B176E4D9 /* Config-TV-Release.xcconfig */;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "App Icon & Top Shelf Image";
 				CODE_SIGN_ENTITLEMENTS = "wiredog-tv/WireDogTV.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 14;
@@ -1082,6 +1083,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = CD7FF1370152E7CB60A4D574 /* Config-TV-Debug.xcconfig */;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "App Icon & Top Shelf Image";
 				CODE_SIGN_ENTITLEMENTS = "wiredog-tv/WireDogTV.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 14;
