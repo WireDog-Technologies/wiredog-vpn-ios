@@ -9,6 +9,16 @@ struct ChangeLogEntry: Identifiable {
 
 private let changeLog: [ChangeLogEntry] = [
     ChangeLogEntry(
+        version: "1.8.0",
+        date: "October 2026",
+        changes: [
+            "WireDog is now available on Apple TV.",
+            "WireDog Business support: SSO sign-in, two-factor authentication, and organization Dedicated IPs.",
+            "Manage Account now opens your account dashboard already signed in.",
+            "Fixed server latency appearing higher than it really is while connected.",
+        ]
+    ),
+    ChangeLogEntry(
         version: "1.7.0",
         date: "August 2026",
         changes: [

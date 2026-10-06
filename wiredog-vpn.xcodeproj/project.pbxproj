@@ -622,7 +622,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = WireDogTunnel/WireDogTunnelDebug.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 13;
+				CURRENT_PROJECT_VERSION = 14;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WireDogTunnel/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = WireDogTunnel;
@@ -637,7 +637,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/WireDogTunnel/Frameworks",
 				);
-				MARKETING_VERSION = 1.7.0;
+				MARKETING_VERSION = 1.8.0;
 				OTHER_LDFLAGS = "$(inherited)";
 				"OTHER_LDFLAGS[sdk=iphoneos*]" = (
 					"$(inherited)",
@@ -662,7 +662,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = WireDogTunnel/WireDogTunnel.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 13;
+				CURRENT_PROJECT_VERSION = 14;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WireDogTunnel/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = WireDogTunnel;
@@ -677,7 +677,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/WireDogTunnel/Frameworks",
 				);
-				MARKETING_VERSION = 1.7.0;
+				MARKETING_VERSION = 1.8.0;
 				OTHER_LDFLAGS = "$(inherited)";
 				"OTHER_LDFLAGS[sdk=iphoneos*]" = (
 					"$(inherited)",
@@ -830,7 +830,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "wiredog-vpn/wiredog-vpnDebug.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 13;
+				CURRENT_PROJECT_VERSION = 14;
 				DEVELOPMENT_ASSET_PATHS = "\"wiredog-vpn/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -850,7 +850,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.7.0;
+				MARKETING_VERSION = 1.8.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.wiredog.vpn;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -875,7 +875,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "wiredog-vpn/wiredog-vpn.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 13;
+				CURRENT_PROJECT_VERSION = 14;
 				DEVELOPMENT_ASSET_PATHS = "\"wiredog-vpn/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -895,7 +895,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.7.0;
+				MARKETING_VERSION = 1.8.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.wiredog.vpn;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -982,7 +982,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = "wiredog-tv/WireDogTV.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 13;
+				CURRENT_PROJECT_VERSION = 14;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "wiredog-tv/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "WireDog TV";
@@ -991,7 +991,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.7.0;
+				MARKETING_VERSION = 1.8.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.wiredog.vpn.tv;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = appletvos;
@@ -1009,7 +1009,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = WireDogTunnelTV/WireDogTunnelTV.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 13;
+				CURRENT_PROJECT_VERSION = 14;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WireDogTunnelTV/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = WireDogTunnelTV;
@@ -1019,7 +1019,7 @@
 					"$(PROJECT_DIR)/WireDogTunnelTV/Frameworks",
 					"$(PROJECT_DIR)/WireDogTunnel/Frameworks",
 				);
-				MARKETING_VERSION = 1.7.0;
+				MARKETING_VERSION = 1.8.0;
 				"OTHER_LDFLAGS[sdk=appletvos*]" = (
 					"$(inherited)",
 					"-force_load",
@@ -1047,7 +1047,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = WireDogTunnelTV/WireDogTunnelTVDebug.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 13;
+				CURRENT_PROJECT_VERSION = 14;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WireDogTunnelTV/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = WireDogTunnelTV;
@@ -1057,7 +1057,7 @@
 					"$(PROJECT_DIR)/WireDogTunnelTV/Frameworks",
 					"$(PROJECT_DIR)/WireDogTunnel/Frameworks",
 				);
-				MARKETING_VERSION = 1.7.0;
+				MARKETING_VERSION = 1.8.0;
 				"OTHER_LDFLAGS[sdk=appletvos*]" = (
 					"$(inherited)",
 					"-force_load",
@@ -1084,7 +1084,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = "wiredog-tv/WireDogTV.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 13;
+				CURRENT_PROJECT_VERSION = 14;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "wiredog-tv/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "WireDog TV";
@@ -1093,7 +1093,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.7.0;
+				MARKETING_VERSION = 1.8.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.wiredog.vpn.tv;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = appletvos;

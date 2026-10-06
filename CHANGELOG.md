@@ -4,6 +4,23 @@ All notable changes to WireDog VPN for iOS are documented here.
 
 ---
 
+## [1.8.0] — 2026-10-05
+
+### Added
+- **Apple TV app** — WireDog now runs on Apple TV with its own tvOS tunnel extension. Sign in by pairing: the TV shows a code / QR code that's approved from a phone or the website, so no typing credentials on a remote.
+- **WireDog Business support** — Organization accounts can now use the app: SSO sign-in, two-factor authentication at login and during password reset, a forced temporary-password change on first sign-in, and an org-required 2FA setup gate that hands off to the dashboard already signed in. Organization Dedicated IP gateways appear in the server list, and members whose organization access lapses or is revoked get a clear explanation instead of the personal paywall.
+- **Signed-in Manage Account** — Settings → View Profile → Manage Account now opens the website dashboard already signed in via a one-time handoff code (same mechanism as checkout), falling back to the regular sign-in page if the code can't be issued.
+- **Pre-payment funnel milestones** — The app reports a fixed set of first-time milestones for unpaid accounts (connect attempted, paywall engagement, App Store plan steps) to `POST /auth/milestones`. Each is sent at most once per account and the backend stores only anonymous daily counts — no account id, IP, or device data.
+
+### Changed
+- **Connected IP comes from the backend, not ipify** — The IP shown after connecting is now the exit IP the backend assigned in the `/vpn/connect` response (shared pool or Dedicated IP), so the exit IP is no longer sent to a third-party lookup service. Also applies to tunnels started from iOS Settings, and the launch-time IP/location lookups are skipped when the app opens with the tunnel already up. Shows "Unknown" if the backend doesn't provide one.
+- **ipify lookups are logged** — Each remaining ipify request (disconnect/launch, for the real IP) writes an `[IPService] ipify lookup` event to the app log, without the IP itself.
+
+### Fixed
+- **Inflated server latency while connected** — Latency probes made with the tunnel up were routed through the connected server, inflating every server's latency (including the connected one) and overwriting the saved values. Latency is now only measured while disconnected, in-flight results are discarded if a connection starts mid-measurement, the last pre-connect values are kept while connected, and a fresh measurement runs after disconnecting.
+
+---
+
 ## [1.6.0] — 2026-08-01
 
 ### Added
