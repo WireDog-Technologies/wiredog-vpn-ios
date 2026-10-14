@@ -4,6 +4,7 @@ import UIKit
 struct ConnectView: View {
     @ObservedObject var vpnManager: VPNManager
     @ObservedObject private var broadcastService = BroadcastService.shared
+    @ObservedObject private var authService = AuthService.shared
     @State private var showServerDetails = false
     @State private var showServerSelector = false
     @State private var showAnnouncements = false
@@ -16,6 +17,15 @@ struct ConnectView: View {
 
     private var unreadAnnouncementCount: Int {
         broadcastService.unreadCount()
+    }
+
+    // Unpaid accounts see an upgrade card where the connection timer would be, so the paywall
+    // stays reachable after they dismiss it. Same exclusions as the up-front paywall: an
+    // organization that stopped covering the account gets its own message on connect, and a
+    // personal plan wouldn't fix that.
+    private var showUpgradeCard: Bool {
+        guard let user = authService.currentUser else { return false }
+        return !user.hasEntitlement && user.lostOrganizationAccess == nil
     }
 
     var statusText: String { vpnManager.statusText }
@@ -39,7 +49,7 @@ struct ConnectView: View {
             return "Loading..."
         }
         if vpnManager.connectionState == .connected, let server = vpnManager.selectedServer {
-            return "\(server.city ?? server.countryName), \(server.countryCode)"
+            return server.gatewayName ?? "\(server.city ?? server.countryName), \(server.countryCode)"
         }
         return vpnManager.currentLocation ?? "Unknown"
     }
@@ -124,7 +134,7 @@ struct ConnectView: View {
                                 .font(.system(size: 12))
                                 .foregroundColor(.vpnTextSecondary)
 
-                            Text(isTransitioning ? "Loading..." : (vpnManager.publicIP ?? "Loading..."))
+                            Text(isTransitioning ? "Loading..." : (vpnManager.publicIP ?? (vpnManager.connectionState == .connected ? "Unknown" : "Loading...")))
                                 .font(.custom("Iosevka Term Extended", size: 16))
                                 .foregroundColor(vpnManager.connectionState == .connected ? statusColor : .vpnRed)
                         }
@@ -184,32 +194,38 @@ struct ConnectView: View {
 
                 Spacer()
 
-                // Connection Time Card
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Connection Time")
-                        .font(.system(size: 14))
-                        .foregroundColor(.vpnTextSecondary)
+                if showUpgradeCard {
+                    UpgradeCard(onTap: { vpnManager.presentPaywall() })
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 16)
+                } else {
+                    // Connection Time Card
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Connection Time")
+                            .font(.system(size: 14))
+                            .foregroundColor(.vpnTextSecondary)
 
-                    HStack(spacing: 8) {
-                        if vpnManager.connectionState == .connected {
-                            Text(vpnManager.connectionDuration.formattedHMS)
-                                .font(.custom("Iosevka Term Extended", size: 22))
-                                .fontWeight(.semibold)
-                                .foregroundColor(statusColor)
-                        } else {
-                            Text("00:00:00")
-                                .font(.custom("Iosevka Term Extended", size: 22))
-                                .fontWeight(.semibold)
-                                .foregroundColor(.vpnTextTertiary)
+                        HStack(spacing: 8) {
+                            if vpnManager.connectionState == .connected {
+                                Text(vpnManager.connectionDuration.formattedHMS)
+                                    .font(.custom("Iosevka Term Extended", size: 22))
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(statusColor)
+                            } else {
+                                Text("00:00:00")
+                                    .font(.custom("Iosevka Term Extended", size: 22))
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.vpnTextTertiary)
+                            }
+                            Spacer()
                         }
-                        Spacer()
                     }
+                    .padding(16)
+                    .background(Color.vpnCardBackground)
+                    .cornerRadius(12)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 16)
                 }
-                .padding(16)
-                .background(Color.vpnCardBackground)
-                .cornerRadius(12)
-                .padding(.horizontal, 16)
-                .padding(.bottom, 16)
 
                 // Server Info Card — always tappable to open server selector
                 if let server = vpnManager.selectedServer {
@@ -263,6 +279,39 @@ struct ConnectView: View {
                 }
             }
         }
+    }
+}
+
+// Replaces the connection-time card for accounts with no active plan. The whole card is the
+// button; the chevron is the tap affordance.
+private struct UpgradeCard: View {
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Get a WireDog VPN")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.vpnTextPrimary)
+
+                    Text("Choose your plan")
+                        .font(.system(size: 14))
+                        .foregroundColor(.vpnTextSecondary)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.vpnTextSecondary)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.vpnCardBackground)
+            .cornerRadius(12)
+        }
+        .buttonStyle(.plain)
     }
 }
 

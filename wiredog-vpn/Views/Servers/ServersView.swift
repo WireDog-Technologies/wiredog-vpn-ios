@@ -23,6 +23,7 @@ struct ServersView: View {
         }
         return vpnManager.availableServers.filter {
             $0.countryName.localizedCaseInsensitiveContains(searchText) ||
+            ($0.gatewayName?.localizedCaseInsensitiveContains(searchText) ?? false) ||
             ($0.city?.localizedCaseInsensitiveContains(searchText) ?? false) ||
             $0.countryCode.localizedCaseInsensitiveContains(searchText)
         }
@@ -305,11 +306,11 @@ private struct ServerSubItemView: View {
             Button(action: action) {
                 HStack(spacing: 10) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(server.city ?? server.countryName)
+                        Text(server.gatewayName ?? server.city ?? server.countryName)
                             .font(.system(size: 13, weight: .medium))
                             .foregroundColor(.vpnTextPrimary)
 
-                        Text(server.id)
+                        Text(server.isDedicated ? "Dedicated gateway · \(server.city ?? server.countryName)" : server.id)
                             .font(.system(size: 11))
                             .foregroundColor(.vpnTextSecondary)
                     }

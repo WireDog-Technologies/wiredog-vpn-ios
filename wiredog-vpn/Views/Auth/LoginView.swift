@@ -10,6 +10,10 @@ struct LoginView: View {
     @State private var showError = false
     @State private var errorMessage = ""
     @State private var showForgotPassword = false
+    @State private var showSSO = false
+    // Set when a password/account-number login came back "2FA required". Held in memory only.
+    @State private var twoFactorChallenge: String?
+    @State private var showTwoFactor = false
 
     // Input limits
     private let maxEmailLength = 128
@@ -61,6 +65,13 @@ struct LoginView: View {
                     .padding(.top, 32)
 
                     Spacer()
+
+                    // Invisible link that pushes the 2FA code screen once a login asks for it.
+                    NavigationLink(
+                        destination: TwoFactorCodeView(challengeToken: twoFactorChallenge ?? ""),
+                        isActive: $showTwoFactor
+                    ) { EmptyView() }
+                    .hidden()
                 }
             }
             .alert("Login Error", isPresented: $showError) {
@@ -71,8 +82,15 @@ struct LoginView: View {
             .sheet(isPresented: $showForgotPassword) {
                 ForgotPasswordView()
             }
+            .onChange(of: showTwoFactor) { isShowing in
+                // Backing out of the code screen abandons the challenge; do not keep it around.
+                if !isShowing { twoFactorChallenge = nil }
+            }
         }
         .navigationViewStyle(.stack)
+        .sheet(isPresented: $showSSO) {
+            SSOLoginView(prefilledEmail: email)
+        }
     }
 
     // MARK: - Standard Login Form
@@ -143,6 +161,15 @@ struct LoginView: View {
                         )
                         .mask(Text("Forgot Password?").font(.system(size: 16, weight: .medium)))
                     )
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.top, 4)
+            }
+
+            // Business employees whose organization uses single sign-on
+            Button(action: { showSSO = true }) {
+                Text("Sign in with SSO")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.vpnTextSecondary)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.top, 4)
             }
@@ -264,7 +291,14 @@ struct LoginView: View {
 
         Task {
             do {
-                try await authService.loginStandard(email: email, password: password)
+                // SSO members have no password, so a password attempt on an SSO domain could only
+                // ever fail with "Invalid credentials". Check first and route them to SSO instead.
+                // A failed lookup counts as "no SSO", so a network blip never blocks password login.
+                if await authService.ssoAvailable(for: email) {
+                    showSSO = true
+                    return
+                }
+                handle(try await authService.loginStandard(email: email, password: password))
             } catch {
                 errorMessage = error.localizedDescription
                 showError = true
@@ -282,11 +316,20 @@ struct LoginView: View {
 
         Task {
             do {
-                try await authService.loginAnonymous(accountNumber: accountNumber)
+                handle(try await authService.loginAnonymous(accountNumber: accountNumber))
             } catch {
                 errorMessage = error.localizedDescription
                 showError = true
             }
+        }
+    }
+
+    /// A signed-in outcome needs nothing here: AuthService flips isAuthenticated and the app swaps
+    /// this screen out. Only the 2FA challenge needs UI.
+    private func handle(_ outcome: LoginOutcome) {
+        if case .twoFactorRequired(let challengeToken) = outcome {
+            twoFactorChallenge = challengeToken
+            showTwoFactor = true
         }
     }
 

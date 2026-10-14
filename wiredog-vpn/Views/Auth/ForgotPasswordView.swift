@@ -9,6 +9,11 @@ struct ForgotPasswordView: View {
     @State private var resetCode = ""
     @State private var newPassword = ""
     @State private var confirmPassword = ""
+    // Set by the code-verification step when the account has 2FA on; the reset then also needs a
+    // current authenticator (or recovery) code.
+    @State private var twoFactorRequired = false
+    @State private var twoFactorCode = ""
+    @State private var showResetSuccess = false
     @State private var showError = false
     @State private var errorMessage = ""
 
@@ -54,6 +59,11 @@ struct ForgotPasswordView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(errorMessage)
+        }
+        .alert("Password Updated", isPresented: $showResetSuccess) {
+            Button("OK") { dismiss() }
+        } message: {
+            Text("Your password was changed. Sign in with your new password.")
         }
     }
 
@@ -179,6 +189,31 @@ struct ForgotPasswordView: View {
 
             SecureToggleField(label: "Confirm Password", placeholder: "Confirm password", text: $confirmPassword)
 
+            if twoFactorRequired {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Two-Factor Code")
+                        .font(.caption)
+                        .foregroundColor(.vpnTextSecondary)
+
+                    TextField(
+                        "",
+                        text: $twoFactorCode,
+                        prompt: Text("Authenticator or recovery code").foregroundColor(.vpnTextTertiary)
+                    )
+                    .textFieldStyle(VPNTextFieldStyle())
+                    .textContentType(.oneTimeCode)
+                    .autocapitalization(.none)
+                    .disableAutocorrection(true)
+                    .onChange(of: twoFactorCode) { newValue in
+                        twoFactorCode = String(newValue.prefix(15))
+                    }
+
+                    Text("Your account has two-factor authentication on. Enter a code from your authenticator app, or a recovery code.")
+                        .font(.system(size: 12))
+                        .foregroundColor(.vpnTextSecondary)
+                }
+            }
+
             GradientActionButton(
                 title: "Reset Password",
                 isLoading: authService.isLoading,
@@ -221,7 +256,7 @@ struct ForgotPasswordView: View {
 
         Task {
             do {
-                try await authService.verifyResetCode(email: email, code: resetCode)
+                twoFactorRequired = try await authService.verifyResetCode(email: email, code: resetCode)
                 withAnimation {
                     currentStep = .passwordReset
                 }
@@ -259,8 +294,18 @@ struct ForgotPasswordView: View {
 
         Task {
             do {
-                try await authService.resetPassword(email: email, code: resetCode, newPassword: newPassword)
-                dismiss()
+                let signedIn = try await authService.resetPassword(
+                    email: email,
+                    code: resetCode,
+                    newPassword: newPassword,
+                    twoFactorCode: twoFactorRequired ? twoFactorCode : nil
+                )
+                if signedIn {
+                    dismiss()
+                } else {
+                    // 2FA accounts are not auto-signed-in (see AuthService.resetPassword).
+                    showResetSuccess = true
+                }
             } catch {
                 errorMessage = error.localizedDescription
                 showError = true
@@ -273,7 +318,8 @@ struct ForgotPasswordView: View {
             newPassword.contains(where: { $0.isLetter }) &&
             newPassword.contains(where: { $0.isNumber }) &&
             newPassword == confirmPassword &&
-            !newPassword.isEmpty
+            !newPassword.isEmpty &&
+            (!twoFactorRequired || !twoFactorCode.isEmpty)
     }
 }
 

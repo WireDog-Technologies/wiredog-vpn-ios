@@ -32,6 +32,36 @@ struct ProfileView: View {
         )
     }
 
+    // Organization seats are paid for and managed by the employer: the plan row says so instead of
+    // showing a personal renewal countdown, and account deletion is an admin action
+    // (Business decision 2026-09-16: email and deletion are org-locked).
+    private var organizationName: String? {
+        guard let profile = authService.currentUser, profile.subscriptionManagedByOrganization else { return nil }
+        return profile.organizationName ?? "your organization"
+    }
+
+    // Set when an organization used to cover this account and no longer does.
+    private var organizationAccessLostText: String? {
+        switch authService.currentUser?.lostOrganizationAccess {
+        case .inactive: return "Organization plan inactive"
+        case .revoked: return "Organization access removed"
+        default: return nil
+        }
+    }
+
+    private var isOrganizationMember: Bool {
+        authService.currentUser?.isOrganizationMember ?? false
+    }
+
+    /// Opens the website dashboard already signed in via a one-time handoff code. Falls back to
+    /// the plain dashboard URL (which asks the user to sign in) if the code can't be minted.
+    private func openDashboard() {
+        Task {
+            let url = (try? await authService.dashboardHandoffURL()) ?? Config.dashboardURL
+            openURL(url)
+        }
+    }
+
     var body: some View {
         ZStack {
             Color.vpnBackground
@@ -159,9 +189,19 @@ struct ProfileView: View {
                                             .font(.system(size: 14))
                                             .foregroundColor(.vpnTextSecondary)
 
-                                        Text(user.isSubscriptionActive ? "Active & Paid" : "Not Active")
-                                            .font(.system(size: 16, weight: .semibold))
-                                            .foregroundColor(user.isSubscriptionActive ? .vpnTextPrimary : .vpnRed)
+                                        if let lostText = organizationAccessLostText {
+                                            Text(lostText)
+                                                .font(.system(size: 16, weight: .semibold))
+                                                .foregroundColor(.vpnRed)
+                                        } else if let organizationName {
+                                            Text("Covered by \(organizationName)")
+                                                .font(.system(size: 16, weight: .semibold))
+                                                .foregroundColor(.vpnTextPrimary)
+                                        } else {
+                                            Text(user.isSubscriptionActive ? "Active & Paid" : "Not Active")
+                                                .font(.system(size: 16, weight: .semibold))
+                                                .foregroundColor(user.isSubscriptionActive ? .vpnTextPrimary : .vpnRed)
+                                        }
                                     }
                                 }
 
@@ -170,37 +210,39 @@ struct ProfileView: View {
                             .padding(16)
                             .background(Color.vpnCardBackground)
 
-                            Divider()
-                                .overlay(Color.vpnBorderColor)
+                            if organizationName == nil && organizationAccessLostText == nil {
+                                Divider()
+                                    .overlay(Color.vpnBorderColor)
 
-                            // Days Remaining
-                            HStack {
-                                HStack(spacing: 12) {
-                                    Image(systemName: "calendar")
-                                        .font(.system(size: 16))
-                                        .foregroundColor(user.isSubscriptionActive ? .vpnGreen : .vpnRed)
-                                        .frame(width: 24)
+                                // Days Remaining
+                                HStack {
+                                    HStack(spacing: 12) {
+                                        Image(systemName: "calendar")
+                                            .font(.system(size: 16))
+                                            .foregroundColor(user.isSubscriptionActive ? .vpnGreen : .vpnRed)
+                                            .frame(width: 24)
 
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text("Days Remaining")
-                                            .font(.system(size: 14))
-                                            .foregroundColor(.vpnTextSecondary)
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text("Days Remaining")
+                                                .font(.system(size: 14))
+                                                .foregroundColor(.vpnTextSecondary)
 
-                                        let daysColor: Color = {
-                                            if !user.isSubscriptionActive { return .vpnRed }
-                                            if user.daysRemaining <= 7 { return .vpnYellow }
-                                            return .vpnTextPrimary
-                                        }()
-                                        Text(user.isSubscriptionActive ? "\(user.daysRemaining) days" : "Expired")
-                                            .font(.system(size: 16, weight: .semibold))
-                                            .foregroundColor(daysColor)
+                                            let daysColor: Color = {
+                                                if !user.isSubscriptionActive { return .vpnRed }
+                                                if user.daysRemaining <= 7 { return .vpnYellow }
+                                                return .vpnTextPrimary
+                                            }()
+                                            Text(user.isSubscriptionActive ? "\(user.daysRemaining) days" : "Expired")
+                                                .font(.system(size: 16, weight: .semibold))
+                                                .foregroundColor(daysColor)
+                                        }
                                     }
-                                }
 
-                                Spacer()
+                                    Spacer()
+                                }
+                                .padding(16)
+                                .background(Color.vpnCardBackground)
                             }
-                            .padding(16)
-                            .background(Color.vpnCardBackground)
                         }
                     }
                     .padding(.vertical, 12)
@@ -209,7 +251,7 @@ struct ProfileView: View {
 
                     // Manage Account Button
                     Button(action: {
-                        openURL(Config.dashboardURL)
+                        openDashboard()
                     }) {
                         HStack {
                             Image(systemName: "person.crop.circle")
@@ -265,31 +307,40 @@ struct ProfileView: View {
 
                     Spacer(minLength: 16)
 
-                    // Delete Account Button
-                    Button(action: {
-                        if vpnManager.connectionState == .disconnected {
-                            showDeleteAlert = true
-                        } else {
-                            showDeleteBlockedAlert = true
+                    // Delete Account Button. Hidden for organization members: only an admin removes them.
+                    if isOrganizationMember {
+                        Text("Your account is managed by your organization. Contact your administrator to remove it.")
+                            .font(.system(size: 12))
+                            .foregroundColor(.vpnTextSecondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 24)
+                            .padding(.bottom, 16)
+                    } else {
+                        Button(action: {
+                            if vpnManager.connectionState == .disconnected {
+                                showDeleteAlert = true
+                            } else {
+                                showDeleteBlockedAlert = true
+                            }
+                        }) {
+                            HStack {
+                                Image(systemName: "trash.fill")
+                                    .font(.system(size: 16))
+                                Text("Delete Account")
+                                    .font(.system(size: 16, weight: .semibold))
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(16)
+                            .background(Color.vpnCardBackground)
+                            .foregroundColor(.vpnRed)
+                            .cornerRadius(8)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(Color.vpnRed.opacity(0.5), lineWidth: 1)
+                            )
                         }
-                    }) {
-                        HStack {
-                            Image(systemName: "trash.fill")
-                                .font(.system(size: 16))
-                            Text("Delete Account")
-                                .font(.system(size: 16, weight: .semibold))
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(16)
-                        .background(Color.vpnCardBackground)
-                        .foregroundColor(.vpnRed)
-                        .cornerRadius(8)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(Color.vpnRed.opacity(0.5), lineWidth: 1)
-                        )
+                        .padding(.horizontal, 16)
                     }
-                    .padding(.horizontal, 16)
                 }
             }
         }

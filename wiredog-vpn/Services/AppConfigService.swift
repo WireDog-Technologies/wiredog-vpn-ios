@@ -5,6 +5,9 @@ class AppConfigService: ObservableObject {
     static let shared = AppConfigService()
 
     @Published var updateAction: UpdateAction = .none
+    // Latest published legal versions; nil until a config (network or cache) has been loaded
+    // or when the backend has none configured.
+    @Published private(set) var legal: LegalVersions?
     // Only reflects the initial cold-launch check — the app root gates its whole UI on this,
     // so toggling it on every later re-check (e.g. the one connect() runs before each connection)
     // would tear down and rebuild the tab view, silently resetting whichever tab the user is on.
@@ -40,6 +43,7 @@ class AppConfigService: ObservableObject {
             return
         }
 
+        legal = config.legal
         updateAction = evaluate(config: config)
         LogService.shared.logApp("[AppConfig] Config evaluated: \(updateAction) (cache fresh: \(isCacheFresh))")
     }

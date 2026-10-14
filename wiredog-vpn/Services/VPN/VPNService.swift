@@ -49,6 +49,9 @@ class VPNService: ObservableObject {
 
     @Published var connectionState: ConnectionState = .disconnected
     @Published var currentServerId: String?
+    // The organization gateway (named Dedicated IP) the current connection uses, if any. Kept so
+    // auto-reconnect goes back through the same gateway instead of the shared network.
+    private(set) var currentGatewayId: Int?
     @Published var sessionId: String?
     @Published var statistics: TunnelStatistics?
     @Published var error: VPNError?
@@ -101,10 +104,20 @@ class VPNService: ObservableObject {
     private let authService: AuthService
     private let tunnelManagerProvider: VPNTunnelManagerProviding
 
+    /// The real system tunnel, except in a Debug build on the tvOS simulator, where it is a fake that
+    /// reports a successful connect (see SimulatedVPNTunnel.swift).
+    nonisolated static func defaultTunnelManagerProvider() -> VPNTunnelManagerProviding {
+        #if DEBUG && targetEnvironment(simulator) && os(tvOS)
+        return SimulatedVPNTunnelManagerProvider()
+        #else
+        return SystemVPNTunnelManagerProvider()
+        #endif
+    }
+
     init(
         apiClient: APIClient = .shared,
         authService: AuthService = .shared,
-        tunnelManagerProvider: VPNTunnelManagerProviding = SystemVPNTunnelManagerProvider(),
+        tunnelManagerProvider: VPNTunnelManagerProviding = VPNService.defaultTunnelManagerProvider(),
         autoLoadOnInit: Bool = true
     ) {
         self.apiClient = apiClient
@@ -144,6 +157,35 @@ class VPNService: ObservableObject {
         }
     }
 
+    // MARK: - Connection Counter Diagnostics
+
+    /// First 8 chars of a sessionId — enough to correlate log lines (and the backend's records)
+    /// without writing the full token into a log users may export.
+    private nonisolated static func short(_ sessionId: String?) -> String {
+        guard let sessionId else { return "none" }
+        return String(sessionId.prefix(8))
+    }
+
+    /// Asks the backend what its active_connection_counter currently says and logs it next to what this device
+    /// believes it holds. A counter that rises with no matching local event shows up here as a
+    /// `local=0 backend>0` mismatch (another device, the extension, or a leaked session). Purely
+    /// diagnostic: never throws, never blocks the caller, and skipped when signed out.
+    func logConnectionCounter(_ context: String) {
+        guard authService.isAuthenticated, !VPNSimulation.isEnabled else { return }
+        let local = Self.short(sessionId)
+        let pending = Self.pendingDisconnectIds().map(Self.short).joined(separator: ",")
+        let state = "\(connectionState)"
+        let client = apiClient
+        Task.detached {
+            do {
+                let status: VPNStatusResponse = try await client.request(endpoint: .vpnStatus)
+                LogService.shared.logService("CONN_COUNTER [\(context)]: backend=\(status.activeConnections)/\(status.maxConnections) localSession=\(local) state=\(state) pendingDisconnects=[\(pending)]")
+            } catch {
+                LogService.shared.logService("CONN_COUNTER [\(context)]: status check failed: \(error.localizedDescription)", level: .warning)
+            }
+        }
+    }
+
     // MARK: - VPN Manager Setup
 
     func loadVPNManager() async {
@@ -173,9 +215,10 @@ class VPNService: ObservableObject {
                     // Tunnel survived the app kill (iOS Network Extension keeps running).
                     // Restore the session token so disconnect() can notify the backend correctly.
                     self.sessionId = storedSessionId
-                    LogService.shared.logService("VPN: Restored session token after app relaunch")
+                    LogService.shared.logService("CONN_COUNTER: relaunch found live tunnel, restored session \(Self.short(storedSessionId))")
                 } else {
                     // Tunnel is gone — call /disconnect to decrement the backend counter.
+                    LogService.shared.logService("CONN_COUNTER: relaunch found stored session \(Self.short(storedSessionId)) but tunnel status is \(connectionState) — releasing it", level: .warning)
                     Self.sharedDefaults.removeObject(forKey: Self.sessionIdKey)
                     cleanupOrphanedSession(storedSessionId, reason: "crash recovery — stale session")
                 }
@@ -184,7 +227,12 @@ class VPNService: ObservableObject {
             // Retry any /disconnect calls that were owed but never confirmed — e.g. the app lost
             // connectivity right as a previous cleanupOrphanedSession() call went out. Independent
             // of the crash-recovery check above, which only covers the single current session.
+            let owed = Self.pendingDisconnectIds()
+            if !owed.isEmpty {
+                LogService.shared.logService("CONN_COUNTER: \(owed.count) unconfirmed /disconnect owed at launch: \(owed.map(Self.short).joined(separator: ","))", level: .warning)
+            }
             retryPendingDisconnects()
+            logConnectionCounter("app launch")
         } catch {
             LogService.shared.logService("VPN manager load failed: \(error)", level: .error)
         }
@@ -212,11 +260,13 @@ class VPNService: ObservableObject {
         }
 
         if enabled {
-            // Enable kill switch via includeAllNetworks (iOS 14+)
+            // Enable kill switch via includeAllNetworks (iOS 14+; unavailable on tvOS)
+            #if os(iOS)
             if #available(iOS 14.0, *) {
                 protocolConfig.includeAllNetworks = true
                 protocolConfig.excludeLocalNetworks = lanAccessEnabled
             }
+            #endif
 
             // Configure on-demand rules for always-on VPN
             let connectRule = NEOnDemandRuleConnect()
@@ -226,10 +276,12 @@ class VPNService: ObservableObject {
             manager.isOnDemandEnabled = true
         } else {
             // Disable kill switch
+            #if os(iOS)
             if #available(iOS 14.0, *) {
                 protocolConfig.includeAllNetworks = false
                 protocolConfig.excludeLocalNetworks = false
             }
+            #endif
 
             manager.onDemandRules = []
             manager.isOnDemandEnabled = false
@@ -238,8 +290,8 @@ class VPNService: ObservableObject {
 
     // MARK: - Connection Methods
 
-    func connect(serverId: String, killSwitchEnabled: Bool, ipv6Enabled: Bool = true, lanAccessEnabled: Bool = true, blockAdsEnabled: Bool = true, blockMalwareEnabled: Bool = true) async throws {
-        LogService.shared.logService("Connect initiated for server \(serverId)")
+    func connect(serverId: String, gatewayId: Int? = nil, killSwitchEnabled: Bool, ipv6Enabled: Bool = true, lanAccessEnabled: Bool = true, blockAdsEnabled: Bool = true, blockMalwareEnabled: Bool = true) async throws {
+        LogService.shared.logService("Connect initiated for server \(serverId) (state=\(connectionState), reconnecting=\(isReconnecting), heldSession=\(Self.short(sessionId)))")
 
         guard connectionState == .disconnected || isReconnecting else {
             LogService.shared.logService("Connect failed: already connecting", level: .error)
@@ -293,20 +345,35 @@ class VPNService: ObservableObject {
 
         do {
             // Phase 1: Fetch WireGuard configuration from API
-            let connectRequest = ConnectRequest(serverId: serverId, blockAds: blockAdsEnabled, blockMalware: blockMalwareEnabled)
+            let connectRequest = ConnectRequest(serverId: serverId, blockAds: blockAdsEnabled, blockMalware: blockMalwareEnabled, dedicatedIpId: gatewayId)
+            #if DEBUG && targetEnvironment(simulator) && os(tvOS)
+            let response = VPNSimulation.connectResponse(serverId: serverId)
+            #else
             let response: ConnectResponse = try await apiClient.request(
                 endpoint: .connect,
                 body: connectRequest
             )
+            #endif
 
             // TODO: Test whether vpn_session_id can be replayed to re-authenticate with the backend.
             // If it can, migrate this to Keychain (same pattern as auth token in KeychainService).
+            // /connect just incremented the counter. If we were already holding a session, assigning over it
+            // orphans that counter increment until something else releases it — the classic counter leak.
+            if let previous = self.sessionId, previous != response.sessionId {
+                LogService.shared.logService("CONN_COUNTER: /connect returned session \(Self.short(response.sessionId)) while still holding \(Self.short(previous)) — old counter increment is now orphaned", level: .error)
+            }
+            if let extensionSession = Self.sharedDefaults.string(forKey: Self.sessionIdKey), extensionSession != self.sessionId, extensionSession != response.sessionId {
+                LogService.shared.logService("CONN_COUNTER: shared store holds session \(Self.short(extensionSession)) not known to the app (extension-originated?) — overwriting with \(Self.short(response.sessionId))", level: .error)
+            }
+            LogService.shared.logService("CONN_COUNTER: +1 /connect granted session \(Self.short(response.sessionId)) server=\(serverId) reconnect=\(isReconnecting)")
             self.sessionId = response.sessionId
             Self.sharedDefaults.set(response.sessionId, forKey: Self.sessionIdKey)
+            Self.storeExitIP(response.server?.exitIp, forSession: response.sessionId)
             self.currentServerId = serverId
+            self.currentGatewayId = gatewayId
             // Lets the WireDogTunnel extension know which server to reconnect to if it's ever
             // started standalone (e.g. from iOS Settings > VPN) rather than through the app.
-            ServerStorage.setLastConnectedServer(serverId)
+            ServerStorage.setLastConnectedServer(serverId, gatewayId: gatewayId)
             LogService.shared.logService("Connecting to server \(serverId)")
 
             // Phase 2: Build WireGuard configuration
@@ -352,6 +419,7 @@ class VPNService: ObservableObject {
             // The tunnel just started — if a cancel landed in the narrow window right around this
             // call, tear it back down immediately rather than leaving an untracked live tunnel.
             if Task.isCancelled {
+                LogService.shared.logService("CONN_COUNTER: cancel landed after tunnel start, session \(Self.short(sessionId)) — extension will release it", level: .warning)
                 // Clear the shared sessionId *before* stopping — same ordering as disconnect().
                 // The extension's stopTunnel() treats a still-present shared sessionId as "nobody
                 // else is telling the backend about this," and calls /disconnect itself; clearing
@@ -366,7 +434,8 @@ class VPNService: ObservableObject {
 
             // Start statistics polling
             startStatisticsPolling()
-            LogService.shared.logService("VPN tunnel started for server \(serverId)")
+            LogService.shared.logService("VPN tunnel started for server \(serverId) session=\(Self.short(sessionId))")
+            logConnectionCounter("after connect")
 
         } catch let vpnError as VPNError {
             LogService.shared.logService("Connect failed: \(vpnError.localizedDescription ?? "unknown error")", level: .error)
@@ -423,18 +492,20 @@ class VPNService: ObservableObject {
     /// failing, notify the backend so the counter doesn't leak. No-op if we failed before that point.
     func cleanupLeakedSessionIfNeeded() {
         guard let leaked = self.sessionId else { return }
+        LogService.shared.logService("CONN_COUNTER: connect failed after /connect granted session \(Self.short(leaked)) — releasing", level: .warning)
         cleanupOrphanedSession(leaked, reason: "connect() threw after sessionId obtained")
         self.sessionId = nil
         Self.sharedDefaults.removeObject(forKey: Self.sessionIdKey)
         if !isReconnecting {
             self.currentServerId = nil
+            self.currentGatewayId = nil
         }
     }
 
     /// Starts our tunnel, auto-swapping in for whatever VPN (ours or another app's) is currently
     /// active. iOS enforces a single active tunnel system-wide, so simply starting our own tunnel
-    /// is normally enough for the OS to preempt the other one — this is how Proton VPN and other
-    /// VPN apps handle switching. NEVPNError.configurationDisabled on the first attempt usually
+    /// is normally enough for the OS to preempt the other one — this is the standard way VPN apps
+    /// handle switching on iOS. NEVPNError.configurationDisabled on the first attempt usually
     /// means our own manager's `isEnabled` flag had drifted to false (e.g. iOS reacting to another
     /// VPN app's config being edited/activated), not that the swap itself is disallowed — so we
     /// re-assert `isEnabled`, re-save/reload, and retry once before surfacing it as a real error.
@@ -478,6 +549,7 @@ class VPNService: ObservableObject {
     /// counter stays net-zero even if this fires mid-retry rather than during the backoff wait.
     func cancelConnect() {
         guard isReconnecting else { return }
+        LogService.shared.logService("CONN_COUNTER: cancelConnect during reconnect, session=\(Self.short(sessionId)) attempt=\(reconnectAttempts)")
         userInitiatedDisconnect = true
         reconnectTask?.cancel()
         reconnectTask = nil
@@ -502,9 +574,11 @@ class VPNService: ObservableObject {
         stopStatisticsPolling()
 
         let capturedSessionId = sessionId
+        LogService.shared.logService("CONN_COUNTER: disconnect() releasing session \(Self.short(capturedSessionId)) (state was \(connectionState))")
         self.sessionId = nil
         Self.sharedDefaults.removeObject(forKey: Self.sessionIdKey)
         self.currentServerId = nil
+        self.currentGatewayId = nil
         self.connectedSince = nil
 
         // Disable kill switch before stopping tunnel so the user has internet while disconnected.
@@ -522,6 +596,8 @@ class VPNService: ObservableObject {
         // Notify backend after tunnel stops — non-critical, best-effort
         if let capturedSessionId = capturedSessionId {
             cleanupOrphanedSession(capturedSessionId, reason: "user-initiated disconnect")
+        } else {
+            LogService.shared.logService("CONN_COUNTER: disconnect() had no session to release — nothing sent to backend", level: .warning)
         }
         // Connection state will be updated by status observer
     }
@@ -539,10 +615,19 @@ class VPNService: ObservableObject {
         // loadVPNManager()'s cold-start retry and the willEnterForeground retry can both fire within
         // the same launch. Without this, each would independently decrement the backend's
         // (non-idempotent) counter.
-        guard !sessionsPendingCleanup.contains(sessionId) else { return }
+        // A simulated session was never registered with the backend; sending /disconnect for it
+        // would 404 and then sit in the pending-retry list forever.
+        if VPNSimulation.isSimulated(sessionId: sessionId) {
+            LogService.shared.logService("VPN: simulated session \(Self.short(sessionId)) released locally (\(reason))")
+            return
+        }
+        guard !sessionsPendingCleanup.contains(sessionId) else {
+            LogService.shared.logService("CONN_COUNTER: /disconnect for \(Self.short(sessionId)) already in flight, skipping duplicate (\(reason))")
+            return
+        }
         sessionsPendingCleanup.insert(sessionId)
 
-        LogService.shared.logService("VPN: cleaning up orphaned session (\(reason))")
+        LogService.shared.logService("CONN_COUNTER: -1 queued /disconnect for session \(Self.short(sessionId)) (\(reason))")
         Self.addPendingDisconnect(sessionId)
         let delay = disconnectNotifyDelayNanoseconds
         let client = apiClient
@@ -557,7 +642,10 @@ class VPNService: ObservableObject {
                     body: DisconnectRequest(sessionId: sessionId)
                 )
                 Self.removePendingDisconnect(sessionId)
+                LogService.shared.logService("CONN_COUNTER: -1 /disconnect confirmed for session \(Self.short(sessionId)) (\(reason))")
+                await self?.logConnectionCounter("after disconnect")
             } catch {
+                LogService.shared.logService("CONN_COUNTER: /disconnect FAILED for session \(Self.short(sessionId)) (\(reason)): \(error.localizedDescription) — counter stays incremented until retried", level: .error)
                 // Left in the pending list — retried via retryPendingDisconnects() on next launch.
             }
             await MainActor.run { self?.sessionsPendingCleanup.remove(sessionId) }
@@ -576,6 +664,30 @@ class VPNService: ObservableObject {
     /// WireDogTunnel extension can now originate its own session (a Settings-app-initiated connect)
     /// and needs the app's crash-recovery reconciliation in loadVPNManager() to see it too.
     nonisolated static let sessionIdKey = "vpn_session_id"
+    /// [sessionId: exitIp] for the most recent session, written by whichever side (app or
+    /// WireDogTunnel extension) called /connect. Keyed by session so a value left behind by any of
+    /// the session-clearing paths can never be shown for a different session.
+    nonisolated static let exitIPKey = "vpn_exit_ip"
+
+    /// The exit IP the backend assigned to the current session, if known. Shown in place of an
+    /// ipify lookup so the exit IP is never sent to a third party.
+    var currentExitIP: String? {
+        // Shared value first: a session the extension started on its own (iOS Settings, on-demand)
+        // is only in shared storage until the app next relaunches.
+        guard let sessionId = Self.sharedDefaults.string(forKey: Self.sessionIdKey) ?? sessionId,
+              let stored = Self.sharedDefaults.dictionary(forKey: Self.exitIPKey) as? [String: String] else {
+            return nil
+        }
+        return stored[sessionId]
+    }
+
+    private nonisolated static func storeExitIP(_ exitIP: String?, forSession sessionId: String) {
+        if let exitIP, !exitIP.isEmpty {
+            sharedDefaults.set([sessionId: exitIP], forKey: exitIPKey)
+        } else {
+            sharedDefaults.removeObject(forKey: exitIPKey)
+        }
+    }
     private nonisolated static var sharedDefaults: UserDefaults {
         UserDefaults(suiteName: Config.appGroupIdentifier) ?? .standard
     }
@@ -641,7 +753,7 @@ class VPNService: ObservableObject {
         switch status {
         case .invalid, .disconnected:
             let wasActive = connectionState == .connected || connectionState == .connecting || connectionState == .disconnecting
-            LogService.shared.logService("VPN status: disconnected")
+            LogService.shared.logService("VPN status: disconnected (wasActive=\(wasActive), userInitiated=\(userInitiatedDisconnect), session=\(Self.short(sessionId)), server=\(currentServerId ?? "none"))")
             connectionState = .disconnected
             stopStatisticsPolling()
 
@@ -653,11 +765,17 @@ class VPNService: ObservableObject {
 
                 // Connection never proved itself stable — clean up its slot rather than letting the
                 // upcoming reconnect attempt leak another increment on top of this orphaned one.
+                LogService.shared.logService("CONN_COUNTER: unexpected drop, session=\(Self.short(sessionId)) stable=\(wasStable) — reconnecting", level: .warning)
                 if !wasStable, let staleSessionId = sessionId {
                     cleanupOrphanedSession(
                         staleSessionId,
                         reason: "dropped before \(Int(minimumStableConnectionDuration))s stability threshold"
                     )
+                }
+                if wasStable, let heldSession = sessionId {
+                    // Stable drop: the old increment is not released here; the extension's stopTunnel
+                    // or the backend's own session cleanup has to account for it.
+                    LogService.shared.logService("CONN_COUNTER: forgetting session \(Self.short(heldSession)) without /disconnect (was stable) — reconnect will increment the counter again", level: .warning)
                 }
                 sessionId = nil
                 Self.sharedDefaults.removeObject(forKey: Self.sessionIdKey)
@@ -666,10 +784,10 @@ class VPNService: ObservableObject {
                 attemptReconnect()
             }
         case .connecting, .reasserting:
-            LogService.shared.logService("VPN status: connecting")
+            LogService.shared.logService("VPN status: connecting (session=\(Self.short(sessionId)))")
             connectionState = .connecting
         case .connected:
-            LogService.shared.logService("VPN status: connected")
+            LogService.shared.logService("VPN status: connected (session=\(Self.short(sessionId)), shared=\(Self.short(Self.sharedDefaults.string(forKey: Self.sessionIdKey))))")
             connectionState = .connected
             isReconnecting = false
             reconnectAttempts = 0
@@ -701,6 +819,7 @@ class VPNService: ObservableObject {
                     Self.sharedDefaults.removeObject(forKey: Self.sessionIdKey)
                 }
                 currentServerId = nil
+                currentGatewayId = nil
             }
             return
         }
@@ -723,6 +842,7 @@ class VPNService: ObservableObject {
             do {
                 try await connect(
                     serverId: serverId,
+                    gatewayId: currentGatewayId,
                     killSwitchEnabled: lastKillSwitchEnabled,
                     ipv6Enabled: lastIPv6Enabled,
                     lanAccessEnabled: lastLANAccessEnabled,
@@ -737,6 +857,7 @@ class VPNService: ObservableObject {
                 isReconnecting = false
                 reconnectAttempts = 0
                 currentServerId = nil
+                currentGatewayId = nil
                 if let staleSessionId = sessionId {
                     cleanupOrphanedSession(staleSessionId, reason: "reconnect aborted — another VPN active")
                     sessionId = nil
@@ -770,6 +891,16 @@ class VPNService: ObservableObject {
     }
 
     private func fetchStatistics() async {
+        #if DEBUG && targetEnvironment(simulator) && os(tvOS)
+        if let simulated = vpnManager?.vpnConnection as? SimulatedVPNConnection {
+            let stats = simulated.nextStatistics()
+            statistics = stats
+            lastStatsResponse = Date()
+            lastSuccessfulHandshake = stats.lastHandshake
+            checkConnectionHealth()
+            return
+        }
+        #endif
         guard let session = vpnManager?.vpnConnection as? NETunnelProviderSession else {
             checkConnectionHealth()
             return
@@ -843,6 +974,7 @@ class VPNService: ObservableObject {
     /// so fresh WireGuard data is available as soon as possible. Health state and grace
     /// period are already set by the willEnterForeground notification observer in init.
     func handleAppForeground() {
+        logConnectionCounter("app foreground")
         guard connectionState == .connected else { return }
         Task { await fetchStatistics() }
     }

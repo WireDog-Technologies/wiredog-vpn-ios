@@ -23,11 +23,18 @@ enum Config {
     // Web URLs (from xcconfig WIREDOG_URL_* → Info.plist WireDogURL*)
     static let dashboardURL: URL = URL(string: Bundle.main.infoDictionary?["WireDogURLDashboard"] as? String ?? "https://www.example.com/dashboard")!
 
+    // Where the one-time handoff code is redeemed (org-required 2FA setup). Same constraint as
+    // checkoutURL: must match the environment WIREDOG_API_BASE_URL points at.
+    static let dashboardHandoffURL: URL = URL(string: Bundle.main.infoDictionary?["WireDogURLDashboardHandoff"] as? String ?? "https://www.example.com/dashboard")!
+
     static let privacyPolicyURL: URL = URL(string: Bundle.main.infoDictionary?["WireDogURLPrivacy"] as? String ?? "https://www.example.com/legal/privacy")!
 
     static let termsOfServiceURL: URL = URL(string: Bundle.main.infoDictionary?["WireDogURLTerms"] as? String ?? "https://www.example.com/legal/terms")!
 
     static let getStartedURL: URL = URL(string: Bundle.main.infoDictionary?["WireDogURLGetStarted"] as? String ?? "https://www.example.com/get-started")!
+
+    // tvOS only: the QR code on the pairing screen deep-links here with a ?code= query item.
+    static let tvPairingURL: URL = URL(string: Bundle.main.infoDictionary?["WireDogURLTvPairing"] as? String ?? "https://www.example.com/tv-pairing")!
 
     // Must match the environment WIREDOG_API_BASE_URL points at — the checkout page
     // exchanges a handoff code against whichever API/DB minted it, so pointing this at

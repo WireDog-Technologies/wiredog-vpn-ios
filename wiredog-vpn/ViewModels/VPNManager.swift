@@ -116,11 +116,16 @@ class VPNManager: ObservableObject {
         // Load initial data
         Task {
             await loadServers()
-            await fetchPublicIP()
-            if self.originalIP == nil, let currentIP = self.publicIP {
-                self.originalIP = currentIP
+            // Skip the ipify/ipapi lookups when the app launches with the tunnel already up: they
+            // would go out through the tunnel and hand the exit IP to a third party (and record it
+            // as the "original" IP). The .connected binding fills publicIP from the backend instead.
+            if vpnService.connectionState == .disconnected {
+                await fetchPublicIP()
+                if self.originalIP == nil, let currentIP = self.publicIP {
+                    self.originalIP = currentIP
+                }
+                await fetchGeoLocation()
             }
-            await fetchGeoLocation()
             await measureLatencies()
             startLatencyPolling()
         }
@@ -162,7 +167,10 @@ class VPNManager: ObservableObject {
                     self.stopTimer()
                     self.connectionDuration = 0
                     self.resetStats()
-                    Task { await self.fetchPublicIPOnDisconnect() }
+                    Task {
+                        await self.fetchPublicIPOnDisconnect()
+                        await self.measureLatencies()
+                    }
                 }
             }
             .store(in: &cancellables)
@@ -190,6 +198,32 @@ class VPNManager: ObservableObject {
                 } else {
                     self?.user = nil
                 }
+            }
+            .store(in: &cancellables)
+
+        // A tunnel that is already up outlives the connect-time subscription check, so every
+        // /auth/me refresh (foreground, post-purchase, etc.) re-checks entitlement and tears the
+        // tunnel down if it has lapsed. A nil profile (sign-out, failed decode) is ignored.
+        authService.$currentUser
+            .compactMap { $0 }
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] profile in
+                self?.disconnectIfEntitlementLost(profile)
+            }
+            .store(in: &cancellables)
+
+        // The server list depends on who is signed in: an organization member on a
+        // dedicated-network-only plan gets a different list than the public one. The list is also
+        // fetched at launch, before anyone has signed in, so drop the cache whenever auth flips
+        // and reload.
+        authService.$isAuthenticated
+            .removeDuplicates()
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self = self else { return }
+                self.serverCacheTimestamp = nil
+                Task { await self.loadServers() }
             }
             .store(in: &cancellables)
 
@@ -255,7 +289,9 @@ class VPNManager: ObservableObject {
             updateServerFavoriteStates()
             updateRecommendedServers()
 
-            if selectedServer == nil {
+            // Also re-pick when the current selection is no longer offered (e.g. the account just
+            // changed and the new list is restricted to the organization's own servers).
+            if selectedServer == nil || !availableServers.contains(where: { $0.id == selectedServer?.id }) {
                 if let lastServerId = UserDefaults.standard.string(forKey: Self.lastConnectedServerKey),
                    let lastServer = availableServers.first(where: { $0.id == lastServerId }) {
                     selectedServer = lastServer
@@ -265,6 +301,12 @@ class VPNManager: ObservableObject {
             }
 
             LogService.shared.logApp("[VPNManager] Servers loaded from API (\(availableServers.count) servers)")
+
+            // The public fleet is never empty, so an empty list for a signed-in account means a
+            // business plan restricted to the organization's own network with no location set up.
+            if availableServers.isEmpty && authService.isAuthenticated {
+                errorMessage = "No locations are available for your account yet. If you're on a business plan, contact your organization's administrator."
+            }
 
         } catch let apiError as APIError {
             if case .unauthorized = apiError {
@@ -290,8 +332,14 @@ class VPNManager: ObservableObject {
     }
 
     /// Measures fresh latencies for all servers and updates the UI.
+    /// Only runs while disconnected: probes made with the tunnel up are routed through the
+    /// connected node, which inflates every server's latency. While connected, the last
+    /// pre-connect values (and persisted cache) are left untouched.
     func measureLatencies() async {
+        guard connectionState == .disconnected else { return }
         let fresh = await LatencyService.shared.measureAll(availableServers)
+        // A connect may have started mid-measurement; those samples are tunnel-skewed.
+        guard connectionState == .disconnected else { return }
         guard !fresh.isEmpty else { return }
         await LatencyService.shared.saveCache(fresh)
         applyLatencies(fresh, to: &availableServers)
@@ -361,6 +409,23 @@ class VPNManager: ObservableObject {
 
     // MARK: - Connection Methods
 
+    /// tvOS can't enforce a kill switch (`includeAllNetworks` is unavailable), so it is never
+    /// offered or applied there, whatever a stored setting says.
+    private var killSwitchEnabled: Bool {
+        #if os(tvOS)
+        return false
+        #else
+        return settings.isKillSwitchEnabled
+        #endif
+    }
+
+    /// Shows the paywall up front (not in response to a connect attempt), so an unpaid account
+    /// learns it needs a plan before it taps Connect. There's no server to resume afterwards.
+    func presentPaywall() {
+        pendingServer = nil
+        needsSubscription = true
+    }
+
     func connect(to server: Server) {
         guard connectionState == .disconnected else { return }
 
@@ -383,14 +448,29 @@ class VPNManager: ObservableObject {
                     return
                 }
 
-                var isSubscriptionActive = userProfile.subscriptionExpiresAt.map { $0 > Date() } ?? false
+                // hasEntitlement, not a bare expiry check: an organization seat can have no expiry
+                // date of its own, and its access is carried by /auth/me's isActive instead.
+                var isSubscriptionActive = userProfile.hasEntitlement
                 if !isSubscriptionActive {
                     try? await authService.fetchUserProfile()
-                    isSubscriptionActive = authService.currentUser?.subscriptionExpiresAt.map { $0 > Date() } ?? false
+                    isSubscriptionActive = authService.currentUser?.hasEntitlement ?? false
                 }
 
                 guard isSubscriptionActive else {
+                    // An organization used to cover this account and no longer does: say so,
+                    // rather than showing a personal paywall that would not fix an employer-side
+                    // problem. (A revoked person who wants personal service can subscribe from
+                    // Manage Account on the website.)
+                    if let lost = authService.currentUser?.lostOrganizationAccess {
+                        LogService.shared.logApp("[VPNManager] Connect blocked: organization access \(lost.rawValue)", level: .warning)
+                        errorMessage = lost.userMessage
+                        return
+                    }
                     LogService.shared.logApp("[VPNManager] Connect failed: subscription not active", level: .error)
+                    // Every manual connect path (power button, server tap, Settings toggle) ends
+                    // here for an unpaid account, and auto-connect can't — it needs a server that
+                    // was connected to before — so this is "tried to connect, got the paywall".
+                    MilestoneService.shared.record(.connectAttempted)
                     pendingServer = server
                     needsSubscription = true
                     return
@@ -419,8 +499,9 @@ class VPNManager: ObservableObject {
                 }
 
                 try await vpnService.connect(
-                    serverId: server.id,
-                    killSwitchEnabled: settings.isKillSwitchEnabled,
+                    serverId: server.connectServerId,
+                    gatewayId: server.gatewayId,
+                    killSwitchEnabled: killSwitchEnabled,
                     ipv6Enabled: settings.isIPv6Enabled,
                     lanAccessEnabled: settings.isLANAccessEnabled,
                     blockAdsEnabled: settings.isBlockAdsEnabled,
@@ -443,6 +524,26 @@ class VPNManager: ObservableObject {
                 errorMessage = error.localizedDescription
             }
         }
+    }
+
+    private func disconnectIfEntitlementLost(_ profile: UserProfile) {
+        guard !profile.hasEntitlement else { return }
+        guard connectionState != .disconnected || vpnService.isReconnecting else { return }
+
+        LogService.shared.logApp("[VPNManager] Subscription no longer active — disconnecting tunnel", level: .warning)
+        // Same flag as a manual disconnect so auto-connect doesn't immediately bring it back up.
+        UserDefaults.standard.set(true, forKey: Self.userManuallyDisconnectedKey)
+        connectTask?.cancel()
+        vpnService.cancelConnect()
+
+        if let lost = profile.lostOrganizationAccess {
+            errorMessage = lost.userMessage
+        } else {
+            pendingServer = selectedServer
+            needsSubscription = true
+        }
+
+        Task { await vpnService.disconnect() }
     }
 
     func disconnect() {
@@ -569,14 +670,13 @@ class VPNManager: ObservableObject {
         currentLocation = await ipService.getGeoLocation()
     }
 
+    /// Uses the exit IP the backend assigned in the /vpn/connect response rather than asking ipify
+    /// through the tunnel, so the exit IP never reaches a third party. No fallback lookup: if the
+    /// backend didn't return one, the UI shows "Unknown".
     private func fetchPublicIPOnConnect() async {
-        isFetchingNetworkInfo = true
         ipService.clearGeoCache()
-        await ipService.resetConnections()
-        let newIP = await ipService.getPublicIPSafe()
-        publicIP = newIP
-        isFetchingNetworkInfo = false
-        LogService.shared.logApp("[VPNManager] Connected - VPN IP assigned")
+        publicIP = vpnService.currentExitIP
+        LogService.shared.logApp("[VPNManager] Connected - VPN IP \(publicIP == nil ? "unknown" : "assigned")")
     }
 
     private func fetchPublicIPOnDisconnect() async {

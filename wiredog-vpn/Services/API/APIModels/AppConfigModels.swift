@@ -6,12 +6,23 @@ struct AppConfigResponse: Codable {
     let timestamp: String?
     let maintenanceMode: Bool
     let platforms: PlatformConfigs
+    // Absent/null when the backend has no legal versions configured (or predates the field).
+    let legal: LegalVersions?
 
     enum CodingKeys: String, CodingKey {
         case timestamp
         case maintenanceMode
         case platforms
+        case legal
     }
+}
+
+// Currently published Privacy Policy / Terms of Service versions. Opaque strings — only
+// compared for equality against what the user last accepted.
+struct LegalVersions: Codable, Equatable {
+    let privacyVersion: String
+    let termsVersion: String
+    let summary: String?
 }
 
 struct PlatformConfigs: Codable {

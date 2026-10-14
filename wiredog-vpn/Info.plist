@@ -26,6 +26,8 @@
 	<string>$(WIREDOG_URL_CHECKOUT)</string>
 	<key>WireDogURLDashboard</key>
 	<string>$(WIREDOG_URL_DASHBOARD)</string>
+	<key>WireDogURLDashboardHandoff</key>
+	<string>$(WIREDOG_URL_DASHBOARD_HANDOFF)</string>
 	<key>WireDogURLGetStarted</key>
 	<string>$(WIREDOG_URL_GET_STARTED)</string>
 	<key>WireDogURLPrivacy</key>

@@ -4,6 +4,7 @@ enum HTTPMethod: String {
     case GET
     case POST
     case PUT
+    case PATCH
     case DELETE
 }
 
@@ -14,6 +15,7 @@ enum APIEndpoint {
     case servers
     case connect
     case disconnect
+    case vpnStatus
     case appConfig
     case announcements
     case deleteAccount
@@ -23,8 +25,15 @@ enum APIEndpoint {
     case registerStandard
     case registerAnonymous
     case handoffToken
+    case milestones
+    case verifyTwoFactor
+    case loginLookup(identifier: String)
+    case ssoExchange
+    case changePassword
     case validateIAP
     case reportIssue
+    case startTvPairing
+    case tvPairingStatus(code: String)
 
     var path: String {
         switch self {
@@ -40,6 +49,8 @@ enum APIEndpoint {
             return "/vpn/connect"
         case .disconnect:
             return "/vpn/disconnect"
+        case .vpnStatus:
+            return "/vpn/status"
         case .appConfig:
             return "/app/config"
         case .announcements:
@@ -58,29 +69,58 @@ enum APIEndpoint {
             return "/auth/register/anonymous"
         case .handoffToken:
             return "/auth/handoff-token"
+        case .milestones:
+            return "/auth/milestones"
+        case .verifyTwoFactor:
+            return "/auth/2fa/verify"
+        case .loginLookup:
+            return "/auth/login/lookup"
+        case .ssoExchange:
+            return "/auth/sso/exchange"
+        case .changePassword:
+            return "/auth/password"
         case .validateIAP:
             return "/auth/validate-iap"
         case .reportIssue:
             return "/feedback/report-issue"
+        case .startTvPairing:
+            return "/auth/tv/start-pairing"
+        case .tvPairingStatus(let code):
+            return "/auth/tv/pairing-status/\(code)"
         }
     }
 
     var method: HTTPMethod {
         switch self {
-        case .login, .logout, .connect, .disconnect, .forgotPassword, .verifyResetCode, .resetPassword, .registerStandard, .registerAnonymous, .handoffToken, .validateIAP, .reportIssue:
+        case .login, .verifyTwoFactor, .ssoExchange, .logout, .connect, .disconnect, .forgotPassword, .verifyResetCode, .resetPassword, .registerStandard, .registerAnonymous, .handoffToken, .milestones, .validateIAP, .reportIssue, .startTvPairing:
             return .POST
-        case .me, .servers, .appConfig, .announcements:
+        case .me, .vpnStatus, .servers, .appConfig, .announcements, .tvPairingStatus, .loginLookup:
             return .GET
         case .deleteAccount:
             return .DELETE
+        case .changePassword:
+            return .PATCH
+        }
+    }
+
+    var queryItems: [URLQueryItem] {
+        switch self {
+        case .loginLookup(let identifier):
+            return [URLQueryItem(name: "identifier", value: identifier)]
+        case .servers:
+            // Opt in to organization "gateway" entries (named Dedicated IPs). Older clients omit
+            // this and the backend keeps returning the plain list for them.
+            return [URLQueryItem(name: "gateways", value: "1")]
+        default:
+            return []
         }
     }
 
     var requiresAuth: Bool {
         switch self {
-        case .login, .appConfig, .announcements, .forgotPassword, .verifyResetCode, .resetPassword, .registerStandard, .registerAnonymous, .reportIssue:
+        case .login, .verifyTwoFactor, .loginLookup, .ssoExchange, .appConfig, .announcements, .forgotPassword, .verifyResetCode, .resetPassword, .registerStandard, .registerAnonymous, .reportIssue, .startTvPairing, .tvPairingStatus:
             return false
-        case .logout, .me, .servers, .connect, .disconnect, .deleteAccount, .handoffToken, .validateIAP:
+        case .logout, .me, .vpnStatus, .servers, .connect, .disconnect, .deleteAccount, .handoffToken, .milestones, .changePassword, .validateIAP:
             return true
         }
     }

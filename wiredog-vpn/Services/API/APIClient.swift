@@ -57,7 +57,12 @@ actor APIClient {
         endpoint: APIEndpoint,
         body: Encodable? = nil
     ) async throws -> T {
-        let url = baseURL.appendingPathComponent(endpoint.path)
+        var url = baseURL.appendingPathComponent(endpoint.path)
+        if !endpoint.queryItems.isEmpty,
+           var components = URLComponents(url: url, resolvingAgainstBaseURL: false) {
+            components.queryItems = endpoint.queryItems
+            url = components.url ?? url
+        }
 
         var request = URLRequest(url: url)
         request.httpMethod = endpoint.method.rawValue
@@ -113,11 +118,30 @@ actor APIClient {
             LogService.shared.logApp("[API] 400 Bad Request", level: .error)
             throw APIError.badRequest
         case 401:
+            // /auth/2fa/verify tags a timed-out sign-in so it is not mistaken for a wrong code.
+            if (try? decoder.decode(ErrorResponse.self, from: data))?.code == "two_factor_challenge_expired" {
+                LogService.shared.logApp("[API] 401 Two-factor challenge expired", level: .error)
+                throw APIError.twoFactorChallengeExpired
+            }
             LogService.shared.logApp("[API] 401 Unauthorized — session may have expired", level: .error)
             throw APIError.unauthorized
         case 403:
-            LogService.shared.logApp("[API] 403 Forbidden", level: .error)
-            throw APIError.forbidden
+            // Some 403s carry a machine-readable `code` so the app can react specifically
+            // instead of showing the generic "check your subscription" message.
+            switch (try? decoder.decode(ErrorResponse.self, from: data))?.code {
+            case "two_factor_setup_required":
+                LogService.shared.logApp("[API] 403 Org requires 2FA setup", level: .error)
+                throw APIError.twoFactorSetupRequired
+            case "server_not_available":
+                LogService.shared.logApp("[API] 403 Server not available to this organization", level: .error)
+                throw APIError.serverNotAvailable
+            case "subscription_required":
+                LogService.shared.logApp("[API] 403 Subscription required", level: .error)
+                throw APIError.subscriptionRequired
+            default:
+                LogService.shared.logApp("[API] 403 Forbidden", level: .error)
+                throw APIError.forbidden
+            }
         case 404:
             LogService.shared.logApp("[API] 404 Not Found", level: .error)
             throw APIError.notFound
@@ -147,9 +171,39 @@ actor APIClient {
             }
             return try decoder.decode(T.self, from: data)
         } catch {
-            LogService.shared.logApp("[API] Decoding error: \(error.localizedDescription)", level: .error)
+            // error.localizedDescription collapses every DecodingError case down to one of two
+            // generic strings ("...isn't in the correct format" / "...is missing") with no field
+            // name, so it's useless for telling a missing key apart from a null value apart from
+            // a type mismatch. Log the structured case instead — never the response body itself,
+            // which may carry user data (e.g. /me).
+            LogService.shared.logApp("[API] Decoding error for \(T.self) from \(endpoint.path): \(Self.describe(decodingError: error))", level: .error)
             throw APIError.decodingError(error)
         }
+    }
+
+    // MARK: - Error Description
+
+    private static func describe(decodingError error: Error) -> String {
+        guard let decodingError = error as? DecodingError else {
+            return error.localizedDescription
+        }
+        switch decodingError {
+        case .keyNotFound(let key, let context):
+            return "keyNotFound '\(key.stringValue)' at \(Self.path(context, key: key))"
+        case .valueNotFound(let type, let context):
+            return "valueNotFound: null for non-optional \(type) at \(Self.path(context))"
+        case .typeMismatch(let type, let context):
+            return "typeMismatch: expected \(type) at \(Self.path(context)) — \(context.debugDescription)"
+        case .dataCorrupted(let context):
+            return "dataCorrupted at \(Self.path(context)): \(context.debugDescription)"
+        @unknown default:
+            return decodingError.localizedDescription
+        }
+    }
+
+    private static func path(_ context: DecodingError.Context, key: CodingKey? = nil) -> String {
+        let components = context.codingPath.map(\.stringValue) + (key.map { [$0.stringValue] } ?? [])
+        return components.isEmpty ? "<root>" : components.joined(separator: ".")
     }
 
     // Convenience method for requests with no expected response body

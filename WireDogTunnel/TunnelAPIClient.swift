@@ -14,6 +14,7 @@ enum TunnelAPIError: Error {
 struct TunnelConnectResult {
     let wgConfig: String
     let sessionId: String
+    let exitIp: String?
 }
 
 enum TunnelAPIClient {
@@ -22,7 +23,7 @@ enum TunnelAPIClient {
     private static let connectTimeout: TimeInterval = 15
     private static let disconnectTimeout: TimeInterval = 8
 
-    static func connect(token: String, serverId: String) async throws -> TunnelConnectResult {
+    static func connect(token: String, serverId: String, dedicatedIpId: Int? = nil) async throws -> TunnelConnectResult {
         var request = URLRequest(url: TunnelConfig.apiBaseURL.appendingPathComponent("/vpn/connect"))
         request.httpMethod = "POST"
         request.timeoutInterval = connectTimeout
@@ -33,12 +34,15 @@ enum TunnelAPIClient {
         // Mirrors ConnectRequest's default field values (blockAds/blockMalware on, not local mode) —
         // the extension has no access to the user's saved preference toggles, only whatever the last
         // app-driven connect persisted into the tunnel config itself.
-        let body: [String: Any] = [
+        var body: [String: Any] = [
             "serverId": serverId,
             "localMode": false,
             "blockAds": true,
             "blockMalware": true
         ]
+        if let dedicatedIpId {
+            body["dedicatedIpId"] = dedicatedIpId
+        }
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
         let data: Data
@@ -74,7 +78,8 @@ enum TunnelAPIClient {
             throw TunnelAPIError.decodingFailed
         }
 
-        return TunnelConnectResult(wgConfig: wgConfig, sessionId: sessionId)
+        let exitIp = (json["server"] as? [String: Any])?["exitIp"] as? String
+        return TunnelConnectResult(wgConfig: wgConfig, sessionId: sessionId, exitIp: exitIp)
     }
 
     static func disconnect(token: String, sessionId: String) async throws {

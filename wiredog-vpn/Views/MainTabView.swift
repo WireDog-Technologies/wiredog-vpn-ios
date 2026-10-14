@@ -7,6 +7,9 @@ struct MainTabView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab = 1
     @State private var showReportIssueFromReviewPrompt = false
+    // Once per MainTabView lifetime (i.e. per launch or login), so dismissing the paywall
+    // doesn't bring it straight back.
+    @State private var hasShownUpfrontPaywall = false
 
     var body: some View {
         ZStack {
@@ -52,6 +55,9 @@ struct MainTabView: View {
             }
             await vpnManager.attemptAutoConnect()
         }
+        .task(id: authService.currentUser?.id) {
+            await presentPaywallIfUnsubscribed()
+        }
         .sheet(isPresented: $vpnManager.showReviewPrompt) {
             ReviewPromptView(
                 onPositive: {
@@ -66,6 +72,23 @@ struct MainTabView: View {
         .sheet(isPresented: $showReportIssueFromReviewPrompt) {
             ReportIssueView(vpnManager: vpnManager)
         }
+    }
+
+    /// Unpaid accounts get the paywall as soon as they're in the app, rather than discovering
+    /// it on their first Connect tap. Refetches first so a cached, stale "inactive" profile
+    /// (e.g. just subscribed on the website) doesn't trigger it.
+    private func presentPaywallIfUnsubscribed() async {
+        guard !hasShownUpfrontPaywall, authService.currentUser != nil else { return }
+        try? await authService.fetchUserProfile()
+        guard let user = authService.currentUser,
+              !user.hasEntitlement,
+              // An org that stopped covering this account gets its own message on connect;
+              // a personal paywall wouldn't fix that.
+              user.lostOrganizationAccess == nil,
+              !vpnManager.needsSubscription else { return }
+
+        hasShownUpfrontPaywall = true
+        vpnManager.presentPaywall()
     }
 
     private func requestAppStoreReview() {

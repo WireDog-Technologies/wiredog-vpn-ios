@@ -90,7 +90,7 @@ struct ServerDetailsSheet: View {
                                 Divider().overlay(Color.vpnBorderColor)
                                 DetailRow(label: "City", value: server.city ?? "Unknown")
                                 Divider().overlay(Color.vpnBorderColor)
-                                DetailRow(label: "Server", value: server.id)
+                                DetailRow(label: server.isDedicated ? "Gateway" : "Server", value: server.gatewayName ?? server.id)
                                 Divider().overlay(Color.vpnBorderColor)
 
                                 HStack {

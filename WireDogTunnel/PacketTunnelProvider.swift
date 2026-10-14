@@ -13,11 +13,12 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         // options dict only happens when iOS itself starts the tunnel — the Settings > VPN toggle, or
         // an on-demand rule evaluation — with no app process involved to hand over a fresh config.
         if let configString = options?["wgConfig"] as? String {
+            TunnelLog.write("CONN_COUNTER: tunnel start from app, shared session=\(TunnelLog.short(TunnelStorage.sessionId))")
             startWireGuardTunnel(configString: configString, completionHandler: completionHandler)
             return
         }
 
-        NSLog("[WireDog] No options provided (standalone start) — originating our own session")
+        TunnelLog.write("CONN_COUNTER: standalone start (Settings/on-demand, no app) — extension will originate its own session; shared session before=\(TunnelLog.short(TunnelStorage.sessionId))", level: "warning")
         startStandaloneTunnel(completionHandler: completionHandler)
     }
 
@@ -48,13 +49,18 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
 
         Task {
             do {
-                let result = try await TunnelAPIClient.connect(token: token, serverId: serverId)
+                let result = try await TunnelAPIClient.connect(token: token, serverId: serverId, dedicatedIpId: TunnelStorage.lastConnectedGatewayId)
+                if let existing = TunnelStorage.sessionId, existing != result.sessionId {
+                    TunnelLog.write("CONN_COUNTER: standalone /connect session \(TunnelLog.short(result.sessionId)) overwrites unreleased \(TunnelLog.short(existing)) — old counter increment orphaned", level: "error")
+                }
+                TunnelLog.write("CONN_COUNTER: +1 standalone /connect granted session \(TunnelLog.short(result.sessionId))")
                 TunnelStorage.sessionId = result.sessionId
+                TunnelStorage.setExitIP(result.exitIp, forSession: result.sessionId)
                 TunnelStandaloneConnectBackoff.recordSuccess()
                 NSLog("[WireDog] Standalone /connect succeeded, starting tunnel")
                 startWireGuardTunnel(configString: result.wgConfig, completionHandler: completionHandler)
             } catch {
-                NSLog("[WireDog] Standalone /connect failed: \(error)")
+                TunnelLog.write("CONN_COUNTER: standalone /connect failed: \(error)", level: "error")
                 TunnelStandaloneConnectBackoff.recordFailure()
                 completionHandler(PacketTunnelError.standaloneUnavailable)
             }
@@ -100,7 +106,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     }
 
     override func stopTunnel(with reason: NEProviderStopReason, completionHandler: @escaping () -> Void) {
-        NSLog("[WireDog] Stopping tunnel with reason: \(reason.rawValue)")
+        TunnelLog.write("CONN_COUNTER: stopTunnel reason=\(reason.rawValue) shared session=\(TunnelLog.short(TunnelStorage.sessionId))")
 
         adapter?.stop { [weak self] error in
             if let error = error {
@@ -128,6 +134,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     /// will find it stale on next launch and retry via its own durable pending-disconnect queue.
     private func notifyBackendOfDisconnectIfOwed(completionHandler: @escaping () -> Void) {
         guard let sessionId = TunnelStorage.sessionId, let token = TunnelKeychain.getAuthToken() else {
+            TunnelLog.write("CONN_COUNTER: stopTunnel owes no /disconnect (session=\(TunnelLog.short(TunnelStorage.sessionId)), token=\(TunnelKeychain.getAuthToken() != nil))")
             completionHandler()
             return
         }
@@ -136,9 +143,9 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
             do {
                 try await TunnelAPIClient.disconnect(token: token, sessionId: sessionId)
                 TunnelStorage.sessionId = nil
-                NSLog("[WireDog] Standalone /disconnect succeeded")
+                TunnelLog.write("CONN_COUNTER: -1 extension /disconnect confirmed for session \(TunnelLog.short(sessionId))")
             } catch {
-                NSLog("[WireDog] Standalone /disconnect failed, leaving for app reconciliation: \(error)")
+                TunnelLog.write("CONN_COUNTER: extension /disconnect FAILED for session \(TunnelLog.short(sessionId)): \(error) — left for app reconciliation", level: "error")
             }
             completionHandler()
         }

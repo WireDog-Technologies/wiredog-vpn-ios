@@ -1,0 +1,6 @@
+{
+  "images" : [
+    { "idiom" : "tv", "filename" : "AppIcon_Back_1280x768.png" }
+  ],
+  "info" : { "author" : "xcode", "version" : 1 }
+}
