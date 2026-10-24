@@ -10,6 +10,7 @@ struct ConnectView: View {
     @State private var showAnnouncements = false
     @State private var isPulsing = false
     @State private var envelopePulse = false
+    @State private var showExitSheet = false
 
     private var activeAnnouncements: [BroadcastMessage] {
         broadcastService.activeMessages()
@@ -227,6 +228,13 @@ struct ConnectView: View {
                     .padding(.bottom, 16)
                 }
 
+                // While a free trial is running, say how long is left.
+                if let user = authService.currentUser, user.isInFreeTrial, let end = user.trialEndsAt {
+                    TrialBanner(endsAt: end)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 12)
+                }
+
                 // Server Info Card — always tappable to open server selector
                 if let server = vpnManager.selectedServer {
                     Button(action: { showServerSelector = true }) {
@@ -271,7 +279,7 @@ struct ConnectView: View {
         .sheet(isPresented: Binding(
             get: { vpnManager.needsSubscription },
             set: { if !$0 { vpnManager.needsSubscription = false } }
-        )) {
+        ), onDismiss: handlePaywallDismissed) {
             SubscriptionSheet {
                 vpnManager.needsSubscription = false
                 if let server = vpnManager.pendingServer {
@@ -279,6 +287,53 @@ struct ConnectView: View {
                 }
             }
         }
+        .sheet(isPresented: $showExitSheet) {
+            PaywallExitSheet { reason in
+                // Kept on this device so reminder wording can match it.
+                ReminderService.shared.recordExitReason(reason, for: authService.currentUser)
+            }
+        }
+    }
+
+    /// Called whenever the paywall closes. A first-time visitor who leaves without buying is
+    /// counted once, then asked once (per account) what is holding them back.
+    private func handlePaywallDismissed() {
+        guard let user = authService.currentUser, user.isUnpaidNeverPaid else { return }
+        MilestoneService.shared.record(.paywallDismissed)
+
+        let shownKey = "paywall_exit_shown_\(user.id)"
+        guard !UserDefaults.standard.bool(forKey: shownKey) else { return }
+        UserDefaults.standard.set(true, forKey: shownKey)
+
+        // Let the paywall finish closing before the next sheet comes up.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            showExitSheet = true
+        }
+    }
+}
+
+// Shown on the Connect screen while a free trial is running.
+private struct TrialBanner: View {
+    let endsAt: Date
+
+    private var text: String {
+        let days = max(Calendar.current.dateComponents([.day], from: Date(), to: endsAt).day ?? 0, 0)
+        if days == 0 { return "Your free trial ends today" }
+        return "Your free trial ends in \(days) day\(days == 1 ? "" : "s")"
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "gift.fill")
+                .foregroundColor(.vpnRedMedium)
+            Text(text)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.vpnTextPrimary)
+            Spacer()
+        }
+        .padding(12)
+        .background(Color.vpnCardBackground)
+        .cornerRadius(10)
     }
 }
 

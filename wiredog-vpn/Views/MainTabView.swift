@@ -52,6 +52,8 @@ struct MainTabView: View {
             // us their plan changed). Cheap no-op the rest of the time.
             if authService.isAuthenticated {
                 try? await authService.fetchUserProfile()
+                // Keep the local reminders in step with whatever the profile now says.
+                await ReminderService.shared.sync(for: authService.currentUser)
             }
             await vpnManager.attemptAutoConnect()
         }
@@ -78,13 +80,23 @@ struct MainTabView: View {
     /// it on their first Connect tap. Refetches first so a cached, stale "inactive" profile
     /// (e.g. just subscribed on the website) doesn't trigger it.
     private func presentPaywallIfUnsubscribed() async {
-        guard !hasShownUpfrontPaywall, authService.currentUser != nil else { return }
+        guard authService.currentUser != nil else { return }
         try? await authService.fetchUserProfile()
-        guard let user = authService.currentUser,
+        guard let user = authService.currentUser else { return }
+
+        // Pick up notices staff sent to this account now that we know who is signed in.
+        await BroadcastService.shared.refresh()
+
+        // Notification permission comes first, so iOS's one-time prompt isn't hidden behind the
+        // paywall. It only appears once per install; every later open skips straight on.
+        await ReminderService.shared.requestPermissionIfNeeded(for: user)
+
+        guard !hasShownUpfrontPaywall,
               !user.hasEntitlement,
               // An org that stopped covering this account gets its own message on connect;
               // a personal paywall wouldn't fix that.
               user.lostOrganizationAccess == nil,
+              !user.isRevoked,
               !vpnManager.needsSubscription else { return }
 
         hasShownUpfrontPaywall = true

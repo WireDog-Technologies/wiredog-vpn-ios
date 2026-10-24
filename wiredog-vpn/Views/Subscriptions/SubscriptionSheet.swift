@@ -4,8 +4,10 @@ import StoreKit
 struct SubscriptionSheet: View {
     let onSuccess: () -> Void
 
+    @ObservedObject private var authService = AuthService.shared
     @State private var showAppStorePlans: Bool = false
     @State private var isRequestingCheckout: Bool = false
+    @State private var isRequestingTrial: Bool = false
     @Environment(\.dismiss) private var dismiss
 
     /// Opens checkout with a one-time handoff code so the already-logged-in user lands
@@ -15,6 +17,7 @@ struct SubscriptionSheet: View {
     private func startCheckout() async {
         guard !isRequestingCheckout else { return }
         MilestoneService.shared.record(.paywallCheckoutTapped)
+        ReminderService.shared.recordCheckoutTap(wasTrial: false, for: authService.currentUser)
         isRequestingCheckout = true
         defer { isRequestingCheckout = false }
 
@@ -25,6 +28,56 @@ struct SubscriptionSheet: View {
             LogService.shared.logApp("[Checkout] Handoff token request failed: \(error.localizedDescription)", level: .warning)
             await UIApplication.shared.open(Config.getStartedURL)
         }
+    }
+
+    /// Same handoff as checkout, landing on the 14-day free-trial checkout. If the code can't be
+    /// issued (e.g. offline) the plain trial URL still works: the website asks them to sign in.
+    private func startTrial() async {
+        guard !isRequestingTrial else { return }
+        MilestoneService.shared.record(.paywallTrialTapped)
+        ReminderService.shared.recordCheckoutTap(wasTrial: true, for: authService.currentUser)
+        isRequestingTrial = true
+        defer { isRequestingTrial = false }
+
+        do {
+            let url = try await AuthService.shared.trialCheckoutHandoffURL()
+            await UIApplication.shared.open(url)
+        } catch {
+            LogService.shared.logApp("[Trial] Handoff token request failed: \(error.localizedDescription)", level: .warning)
+            await UIApplication.shared.open(Config.trialCheckoutURL)
+        }
+    }
+
+    /// Standard accounts the server confirmed can start the trial, plus Standard accounts that
+    /// only need to verify their email first (the website enforces that). A missing field never offers a trial.
+    private var showsTrialButton: Bool {
+        guard let user = authService.currentUser, user.accountType == .standard else { return false }
+        return user.trialEligible || user.trialIneligibleReason == .unverified
+    }
+
+    /// Anonymous accounts can't use the trial; say so instead of hiding the reason.
+    @ViewBuilder
+    private var anonymousTrialNotice: some View {
+        if authService.currentUser?.trialIneligibleReason == .anonymous {
+            trialNotice("14-day free trial is limited to Standard accounts.", systemImage: "info.circle")
+        }
+    }
+
+    private func trialNotice(_ text: String, systemImage: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: systemImage)
+                .foregroundColor(.vpnTextSecondary)
+            Text(text)
+                .font(.system(size: 13))
+                .foregroundColor(.vpnTextSecondary)
+                .multilineTextAlignment(.leading)
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+        .background(Color.vpnCardBackground)
+        .cornerRadius(12)
+        .padding(.horizontal, 20)
+        .padding(.bottom, 12)
     }
 
     var body: some View {
@@ -86,6 +139,8 @@ struct SubscriptionSheet: View {
                         .padding(.horizontal, 20)
                         .padding(.bottom, 16)
 
+                        anonymousTrialNotice
+
                         // Subscription card
                         VStack(spacing: 12) {
                             Text("$4.99/month")
@@ -116,6 +171,24 @@ struct SubscriptionSheet: View {
                                 isDisabled: isRequestingCheckout
                             ) {
                                 Task { await startCheckout() }
+                            }
+
+                            if showsTrialButton {
+                                Button { Task { await startTrial() } } label: {
+                                    Group {
+                                        if isRequestingTrial {
+                                            ProgressView().tint(.vpnTextPrimary)
+                                        } else {
+                                            Text("Start Free Trial")
+                                                .font(.system(size: 16, weight: .semibold))
+                                                .foregroundColor(.vpnTextPrimary)
+                                        }
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 50)
+                                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.vpnRedMedium, lineWidth: 1.5))
+                                }
+                                .disabled(isRequestingTrial)
                             }
 
                             Button {
@@ -159,6 +232,12 @@ struct SubscriptionSheet: View {
                         .underline()
                 }
                 .padding(.vertical, 20)
+            }
+        }
+        .onAppear {
+            // Same group as paywall_dismissed (never-paid), so shown vs dismissed compares like with like.
+            if authService.currentUser?.isUnpaidNeverPaid == true {
+                MilestoneService.shared.record(.paywallShown)
             }
         }
         .sheet(isPresented: $showAppStorePlans) {

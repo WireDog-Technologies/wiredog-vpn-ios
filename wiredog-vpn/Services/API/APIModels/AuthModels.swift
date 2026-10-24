@@ -88,6 +88,22 @@ struct UserProfile: Decodable, Equatable {
     // Where the account stands with an organization (see OrganizationAccess). nil for a plain
     // consumer, or when talking to a backend that predates the field.
     let organizationAccess: OrganizationAccess?
+    // Free-trial and account-state fields from /auth/me, optional-with-default for the same reason.
+    let trialEndsAt: Date?
+    let beganAsTrial: Bool
+    // Why this account cannot start the free trial. nil means either "can start one" or "backend
+    // didn't say"; trialEligible tells those apart.
+    let trialIneligibleReason: TrialIneligibleReason?
+    // True only when the backend sent trialIneligibleReason as an explicit null: the account can
+    // start a trial. A missing field (older backend) stays false so the app never offers a trial
+    // the server did not confirm.
+    let trialEligible: Bool
+    // Has had paid access or a trial at some point, even if it has since expired.
+    let everHadAccess: Bool
+    // A card (Stripe) subscription that renews on its own. Apple subscriptions are not covered; ask StoreKit.
+    let autoRenews: Bool
+    // Set when staff revoked the account (fraud, chargeback, abuse).
+    let revokedReason: String?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -107,6 +123,12 @@ struct UserProfile: Decodable, Equatable {
         case organizationName
         case organizationRole
         case organizationAccess
+        case trialEndsAt
+        case beganAsTrial
+        case trialIneligibleReason
+        case everHadAccess
+        case autoRenews
+        case revokedReason
     }
 
     init(from decoder: Decoder) throws {
@@ -128,6 +150,31 @@ struct UserProfile: Decodable, Equatable {
         organizationName = try container.decodeIfPresent(String.self, forKey: .organizationName)
         organizationRole = try container.decodeIfPresent(String.self, forKey: .organizationRole)
         organizationAccess = try container.decodeIfPresent(OrganizationAccess.self, forKey: .organizationAccess)
+        trialEndsAt = try container.decodeIfPresent(Date.self, forKey: .trialEndsAt)
+        beganAsTrial = try container.decodeIfPresent(Bool.self, forKey: .beganAsTrial) ?? false
+        trialIneligibleReason = try container.decodeIfPresent(TrialIneligibleReason.self, forKey: .trialIneligibleReason)
+        if container.contains(.trialIneligibleReason) {
+            trialEligible = try container.decodeNil(forKey: .trialIneligibleReason)
+        } else {
+            trialEligible = false
+        }
+        everHadAccess = try container.decodeIfPresent(Bool.self, forKey: .everHadAccess) ?? false
+        autoRenews = try container.decodeIfPresent(Bool.self, forKey: .autoRenews) ?? false
+        revokedReason = try container.decodeIfPresent(String.self, forKey: .revokedReason)
+    }
+
+    var isRevoked: Bool { revokedReason != nil }
+
+    /// Still in the sign-up funnel: no plan, never had access, not tied to an organization, not
+    /// revoked. The people the paywall exit sheet and the reminder sequence are for.
+    var isUnpaidNeverPaid: Bool {
+        !hasEntitlement && !everHadAccess && !isOrganizationMember && lostOrganizationAccess == nil && !isRevoked
+    }
+
+    /// A running, unconverted free trial.
+    var isInFreeTrial: Bool {
+        guard let end = trialEndsAt else { return false }
+        return end > Date()
     }
 
     /// Whether the backend will let this account connect. An org seat's expiry can be absent
@@ -177,6 +224,24 @@ enum OrganizationAccess: String, Decodable {
         case .revoked:
             return "Your organization has removed your access to WireDog VPN. Contact your administrator if you think this is a mistake."
         }
+    }
+}
+
+/// `/auth/me`'s `trialIneligibleReason`. Unknown values decode as `.unknown` so a new backend
+/// reason never fails the whole profile decode.
+enum TrialIneligibleReason: String, Decodable {
+    case disabled
+    case anonymous
+    case unverified
+    case used
+    case paidBefore = "paid_before"
+    case hasTime = "has_time"
+    case revoked
+    case unknown
+
+    init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        self = TrialIneligibleReason(rawValue: raw) ?? .unknown
     }
 }
 

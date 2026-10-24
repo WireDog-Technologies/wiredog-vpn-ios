@@ -16,7 +16,7 @@ struct BroadcastListView: View {
                         Image(systemName: "envelope.open")
                             .font(.system(size: 36))
                             .foregroundColor(.vpnTextSecondary)
-                        Text("No announcements right now")
+                        Text("No messages right now")
                             .font(.system(size: 15))
                             .foregroundColor(.vpnTextSecondary)
                     }
@@ -37,7 +37,7 @@ struct BroadcastListView: View {
                 }
             }
             .background(Color.vpnBackground.ignoresSafeArea())
-            .navigationTitle("Announcements")
+            .navigationTitle("Messages")
             .navigationBarTitleDisplayMode(.inline)
         }
     }

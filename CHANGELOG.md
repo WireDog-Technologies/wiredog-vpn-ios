@@ -4,6 +4,25 @@ All notable changes to WireDog VPN for iOS are documented here.
 
 ---
 
+## [1.8.1] — Unreleased
+
+### Added
+- **14-day free trial on the paywall** — Accounts the server says can start a trial see "Start Free Trial", which opens the website's trial checkout already signed in through the one-time handoff code. Unverified Standard accounts are told to verify their email; Anonymous accounts see that they aren't eligible (also noted on the account-type screen). While a trial runs, the Connect screen shows how many days are left.
+- **"Not ready yet?" exit sheet** — The first time a first-time visitor closes the paywall without buying, one optional question appears: too expensive, server locations, missing a feature, not ready yet, or other (typed, 140 characters, plain text only). The answer is counted anonymously and the typed text is stored with no account link.
+- **Local reminders** — Notification permission is requested once when the app opens. Unpaid, never-paid accounts get up to three reminders (day 1, 3, 7 at 10:00 local time, with wording that depends on trial eligibility and the exit-sheet answer); a running free trial gets one reminder two days before it ends; lapsed and non-renewing plans get up to two win-back reminders. Everything is scheduled on the device; no push token and nothing is sent to the backend. A "Reminders" switch in Settings turns them off.
+- **Delete-account "Before you go" step** — Explains the billing outcome (card subscriptions are cancelled automatically; an Apple subscription is not and the step links to Apple's subscription page; prepaid time is lost), offers to cancel auto-renew instead, and asks an optional reason.
+- **Messages from support** — The announcements inbox (now "Messages") also shows notices sent to your account only, fetched from `GET /auth/messages`. Read state stays on the device.
+- **Revoked-account page** — Accounts revoked by staff see an explanation and a support contact instead of the paywall.
+
+### Changed
+- **Sign in with SSO matches Android** — With an email typed, the button goes straight to the organization's sign-in page; a password login on an SSO domain does the same. Errors show inline, a cancelled sign-in says so, the email is validated with a clear message, and Return submits.
+- **Funnel milestones** — The app now reports `paywall_shown`, `paywall_dismissed` and `paywall_trial_tapped`, and no longer reports `connect_attempted`. "Engaged" still means the first tap on any paywall button.
+
+### Fixed
+- **Device-count leak from overlapping connects** — Two triggers firing at once (launch auto-connect, a network-change auto-connect, returning to the app, a tap) could each call `/vpn/connect` before either had marked the app as connecting. The second session replaced the first and its device-count slot was never released. `VPNService.connect()` now allows only one attempt at a time and turns the duplicate away (logged as `CONN_COUNTER: duplicate connect rejected`); `VPNManager` ignores a duplicate trigger silently and no longer loses the handle needed to cancel the first attempt. Switching servers waits for a cancelled connect to finish before starting the next.
+
+---
+
 ## [1.8.0] — 2026-10-05
 
 ### Added

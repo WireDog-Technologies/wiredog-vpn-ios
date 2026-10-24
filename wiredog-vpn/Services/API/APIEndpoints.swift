@@ -26,6 +26,8 @@ enum APIEndpoint {
     case registerAnonymous
     case handoffToken
     case milestones
+    case exitFeedback
+    case accountMessages
     case verifyTwoFactor
     case loginLookup(identifier: String)
     case ssoExchange
@@ -71,6 +73,10 @@ enum APIEndpoint {
             return "/auth/handoff-token"
         case .milestones:
             return "/auth/milestones"
+        case .exitFeedback:
+            return "/auth/exit-feedback"
+        case .accountMessages:
+            return "/auth/messages"
         case .verifyTwoFactor:
             return "/auth/2fa/verify"
         case .loginLookup:
@@ -92,9 +98,9 @@ enum APIEndpoint {
 
     var method: HTTPMethod {
         switch self {
-        case .login, .verifyTwoFactor, .ssoExchange, .logout, .connect, .disconnect, .forgotPassword, .verifyResetCode, .resetPassword, .registerStandard, .registerAnonymous, .handoffToken, .milestones, .validateIAP, .reportIssue, .startTvPairing:
+        case .login, .verifyTwoFactor, .ssoExchange, .logout, .connect, .disconnect, .forgotPassword, .verifyResetCode, .resetPassword, .registerStandard, .registerAnonymous, .handoffToken, .milestones, .exitFeedback, .validateIAP, .reportIssue, .startTvPairing:
             return .POST
-        case .me, .vpnStatus, .servers, .appConfig, .announcements, .tvPairingStatus, .loginLookup:
+        case .me, .vpnStatus, .servers, .appConfig, .announcements, .accountMessages, .tvPairingStatus, .loginLookup:
             return .GET
         case .deleteAccount:
             return .DELETE
@@ -120,7 +126,7 @@ enum APIEndpoint {
         switch self {
         case .login, .verifyTwoFactor, .loginLookup, .ssoExchange, .appConfig, .announcements, .forgotPassword, .verifyResetCode, .resetPassword, .registerStandard, .registerAnonymous, .reportIssue, .startTvPairing, .tvPairingStatus:
             return false
-        case .logout, .me, .vpnStatus, .servers, .connect, .disconnect, .deleteAccount, .handoffToken, .milestones, .changePassword, .validateIAP:
+        case .logout, .me, .vpnStatus, .servers, .connect, .disconnect, .deleteAccount, .handoffToken, .milestones, .exitFeedback, .accountMessages, .changePassword, .validateIAP:
             return true
         }
     }

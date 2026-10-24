@@ -326,6 +326,10 @@ class AuthService: ObservableObject {
         keychainService.deleteAuthToken()
         currentUser = nil
         isAuthenticated = false
+        #if os(iOS)
+        ReminderService.shared.cancelAll()
+        BroadcastService.shared.clearAccountMessages()
+        #endif
         LogService.shared.logApp("User logged out")
     }
 
@@ -338,6 +342,10 @@ class AuthService: ObservableObject {
         keychainService.deleteAuthToken()
         currentUser = nil
         isAuthenticated = false
+        #if os(iOS)
+        ReminderService.shared.cancelAll()
+        BroadcastService.shared.clearAccountMessages()
+        #endif
         LogService.shared.logApp("Account deleted")
     }
 
@@ -426,6 +434,11 @@ class AuthService: ObservableObject {
     /// header, matching the mitigation Legal signed off on for this flow.
     func checkoutHandoffURL() async throws -> URL {
         try await handoffURL(for: Config.checkoutURL)
+    }
+
+    /// Same one-time-code handoff, landing on the free-trial checkout.
+    func trialCheckoutHandoffURL() async throws -> URL {
+        try await handoffURL(for: Config.trialCheckoutURL)
     }
 
     /// Same one-time-code handoff, landing on the account dashboard. Used to send an employee to

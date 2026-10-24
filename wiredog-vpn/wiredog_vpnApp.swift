@@ -106,6 +106,9 @@ struct wiredog_vpnApp: App {
                 ForcedPasswordChangeView()
             } else if let user = authService.currentUser, user.twoFactorRequiredByOrg, !user.totpEnabled {
                 TwoFactorSetupRequiredView()
+            } else if let user = authService.currentUser, user.isRevoked {
+                // Staff removed this account's access; a plan or paywall can't fix that.
+                RevokedAccountView(reason: user.revokedReason)
             } else {
                 MainTabView(vpnManager: vpnManager)
             }

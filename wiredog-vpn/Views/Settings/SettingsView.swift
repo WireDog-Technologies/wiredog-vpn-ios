@@ -7,6 +7,8 @@ struct SettingsView: View {
     @State private var showChangeLog = false
     @State private var showReportIssue = false
     @State private var showReconnectWarning = false
+    // The in-app switch for local reminders; iOS notification permission is separate.
+    @State private var remindersOn = ReminderService.shared.isEnabled
 
     private var appVersion: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
@@ -329,6 +331,46 @@ struct SettingsView: View {
                             .background(Color.vpnCardBackground)
 
                         }
+                    }
+                    .padding(.vertical, 12)
+
+                    // NOTIFICATIONS SECTION
+                    VStack(spacing: 0) {
+                        HStack {
+                            Text("NOTIFICATIONS")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(.vpnTextSecondary)
+                            Spacer()
+                        }
+                        .padding(16)
+                        .background(Color.vpnSecondaryBackground)
+
+                        HStack(spacing: 12) {
+                            Image(systemName: "bell.fill")
+                                .font(.system(size: 16))
+                                .foregroundColor(.vpnPrimary)
+                                .frame(width: 24)
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Reminders")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(.vpnTextPrimary)
+
+                                Text("Occasional reminders about your plan and free trial")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.vpnTextSecondary)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+
+                            Toggle("", isOn: $remindersOn)
+                                .tint(.vpnGreen)
+                                .labelsHidden()
+                                .onChange(of: remindersOn) { enabled in
+                                    ReminderService.shared.setEnabled(enabled, for: AuthService.shared.currentUser)
+                                }
+                        }
+                        .padding(16)
+                        .background(Color.vpnCardBackground)
                     }
                     .padding(.vertical, 12)
 

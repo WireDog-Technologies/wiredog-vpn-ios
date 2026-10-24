@@ -4,10 +4,15 @@ import Foundation
 /// them into bare daily counters (no account id is stored) and ignores paid, organization
 /// and test accounts, so this only answers "what share of new accounts got this far".
 enum Milestone: String, CaseIterable {
-    case connectAttempted = "connect_attempted"
+    /// The paywall appeared. It opens on its own after sign-up, so this is a health check on the
+    /// funnel (it should track sign-ups) and the denominator for "saw it and didn't engage".
+    case paywallShown = "paywall_shown"
+    /// First dismissal of the paywall without buying.
+    case paywallDismissed = "paywall_dismissed"
     /// Sent alongside the first of any paywall action below, so "saw the paywall and left"
-    /// can be counted without per-account data (1 − engaged / connectAttempted).
+    /// can be counted without per-account data (1 − engaged / shown).
     case paywallEngaged = "paywall_engaged"
+    case paywallTrialTapped = "paywall_trial_tapped"
     case paywallCheckoutTapped = "paywall_checkout_tapped"
     case paywallBetterPlansTapped = "paywall_better_plans_tapped"
     case paywallAppStoreOpened = "paywall_app_store_opened"
@@ -16,7 +21,7 @@ enum Milestone: String, CaseIterable {
 
     var isPaywallAction: Bool {
         switch self {
-        case .connectAttempted, .paywallEngaged: return false
+        case .paywallShown, .paywallDismissed, .paywallEngaged: return false
         default: return true
         }
     }

@@ -59,6 +59,8 @@ class VPNService: ObservableObject {
     @Published var isConnectionHealthy = true
 
     private var vpnManager: VPNTunnelManaging?
+    // True from the start of connect() until it returns or throws. See the guard in connect().
+    private var connectInFlight = false
     // Guards against firing two concurrent /disconnect calls for the same session — e.g.
     // loadVPNManager()'s cold-start retry and the willEnterForeground retry can both fire within
     // the same launch (SwiftUI's scene lifecycle posts willEnterForeground even on a cold start).
@@ -297,6 +299,17 @@ class VPNService: ObservableObject {
             LogService.shared.logService("Connect failed: already connecting", level: .error)
             throw VPNError.alreadyConnecting
         }
+
+        // connectionState only flips to .connecting after several awaits below, so the check above
+        // alone lets two triggers (launch auto-connect, network-change auto-connect, foreground, a
+        // tap, a reconnect) both get through and each call /vpn/connect, orphaning the first
+        // session's counter increment. This flag is set before the first await, so only one wins.
+        guard !connectInFlight else {
+            LogService.shared.logService("CONN_COUNTER: duplicate connect rejected — another connect is already in flight (heldSession=\(Self.short(sessionId)))", level: .warning)
+            throw VPNError.alreadyConnecting
+        }
+        connectInFlight = true
+        defer { connectInFlight = false }
 
         // Verify subscription before attempting to connect
         guard authService.isAuthenticated else {

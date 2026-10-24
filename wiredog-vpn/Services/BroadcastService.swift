@@ -8,6 +8,11 @@ class BroadcastService: ObservableObject {
     @Published private(set) var messages: [BroadcastMessage] = []
     @Published private(set) var readIds: Set<String> = BroadcastReadStore.loadReadIds()
 
+    // Public announcements, and notices staff sent to this account only (fetched with the login
+    // token; ids start with "m" so they can't collide). Shown together in one inbox.
+    private var announcements: [BroadcastMessage] = []
+    private var accountMessages: [BroadcastMessage] = []
+
     private var pollingTask: Task<Void, Never>?
     private static let pollingInterval: TimeInterval = 5 * 60
     private static let pollingJitter: TimeInterval = 60
@@ -24,15 +29,40 @@ class BroadcastService: ObservableObject {
     }
 
     func refresh() async {
+        var announcementsLoaded = false
         do {
             // The backend query is the source of truth for which announcements are live —
             // whatever it returns is exactly what should be shown, no client-side lifecycle filtering.
-            let fetched: [BroadcastMessage] = try await APIClient.shared.request(endpoint: .announcements)
-            messages = fetched
-            pruneReadIds(stillPresent: Set(fetched.map(\.id)))
+            announcements = try await APIClient.shared.request(endpoint: .announcements)
+            announcementsLoaded = true
         } catch {
             LogService.shared.logApp("[Broadcast] Fetch failed: \(error.localizedDescription)", level: .warning)
         }
+
+        var noticesLoaded = false
+        if AuthService.shared.isAuthenticated {
+            do {
+                accountMessages = try await APIClient.shared.request(endpoint: .accountMessages)
+                noticesLoaded = true
+            } catch {
+                LogService.shared.logApp("[Broadcast] Account notices fetch failed: \(error.localizedDescription)", level: .warning)
+            }
+        } else {
+            accountMessages = []
+            noticesLoaded = true
+        }
+
+        messages = announcements + accountMessages
+        // Only forget read-ids when both lists loaded, or a failed fetch would mark everything unread.
+        if announcementsLoaded && noticesLoaded {
+            pruneReadIds(stillPresent: Set(messages.map(\.id)))
+        }
+    }
+
+    /// Drops the signed-in account's notices (sign-out, account deletion).
+    func clearAccountMessages() {
+        accountMessages = []
+        messages = announcements
     }
 
     // `target` is still carried on each message for backend organization/reporting, but every

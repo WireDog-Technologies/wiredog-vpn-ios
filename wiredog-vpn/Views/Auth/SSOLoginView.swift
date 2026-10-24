@@ -7,8 +7,8 @@ struct SSOLoginView: View {
     @StateObject private var authService = AuthService.shared
     @Environment(\.dismiss) var dismiss
     @State var email: String
-    @State private var showError = false
-    @State private var errorMessage = ""
+    // Shown in red under the field, like Android's dedicated SSO page.
+    @State private var errorMessage: String?
 
     private let maxEmailLength = 128
 
@@ -58,25 +58,34 @@ struct SSOLoginView: View {
                         TextField(
                             "",
                             text: $email,
-                            prompt: Text("you@company.com").foregroundColor(.vpnTextTertiary)
+                            prompt: Text("Work Email").foregroundColor(.gray)
                         )
                         .textFieldStyle(VPNTextFieldStyle())
                         .textContentType(.emailAddress)
                         .keyboardType(.emailAddress)
                         .autocapitalization(.none)
                         .disableAutocorrection(true)
+                        .submitLabel(.done)
+                        .onSubmit(start)
                         .onChange(of: email) { newValue in
                             let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@.+-_")
                             let filtered = String(newValue.unicodeScalars.filter { allowed.contains($0) })
                             let limited = String(filtered.prefix(maxEmailLength))
                             if limited != newValue { email = limited }
+                            errorMessage = nil
+                        }
+
+                        if let errorMessage {
+                            Text(errorMessage)
+                                .font(.system(size: 14))
+                                .foregroundColor(.vpnRed)
                         }
                     }
 
                     GradientActionButton(
-                        title: "Continue",
+                        title: "Sign in with SSO",
                         isLoading: authService.isLoading,
-                        isDisabled: !email.contains("@"),
+                        isDisabled: email.trimmingCharacters(in: .whitespaces).isEmpty,
                         action: start
                     )
 
@@ -86,25 +95,31 @@ struct SSOLoginView: View {
                 .padding(.top, 20)
             }
         }
-        .alert("Single Sign-On", isPresented: $showError) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(errorMessage)
+        .onAppear {
+            // A message left over from the login screen does not belong on this page.
+            errorMessage = nil
         }
     }
 
     private func start() {
+        guard looksLikeEmail(email) else {
+            errorMessage = "Enter a valid work email address"
+            return
+        }
+        errorMessage = nil
         Task {
             do {
                 try await authService.signInWithSSO(email: email)
                 // Success flips AuthService.isAuthenticated; the app replaces the login screen.
-            } catch AuthError.ssoCancelled {
-                // The user closed the browser sheet on purpose. Not an error worth an alert.
             } catch {
+                // Includes "Single sign-on was cancelled." when the browser sheet is closed.
                 errorMessage = error.localizedDescription
-                showError = true
             }
         }
+    }
+
+    private func looksLikeEmail(_ value: String) -> Bool {
+        value.range(of: "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$", options: .regularExpression) != nil
     }
 }
 

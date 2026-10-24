@@ -12,6 +12,10 @@ struct ProfileView: View {
     @State private var showDeleteConfirm = false
     @State private var deleteError: String?
     @State private var showDeleteError = false
+    @State private var showDeleteFlow = false
+    // What they chose on the "Before you go" step; sent just before the account is deleted.
+    @State private var pendingDeleteReason: String?
+    @State private var pendingDeleteText = ""
 
     private var user: User {
         // Prefer the profile data from authService directly to avoid
@@ -318,7 +322,7 @@ struct ProfileView: View {
                     } else {
                         Button(action: {
                             if vpnManager.connectionState == .disconnected {
-                                showDeleteAlert = true
+                                showDeleteFlow = true
                             } else {
                                 showDeleteBlockedAlert = true
                             }
@@ -365,6 +369,16 @@ struct ProfileView: View {
         } message: {
             Text("Please disconnect the VPN before signing out.")
         }
+        .sheet(isPresented: $showDeleteFlow) {
+            DeleteAccountFlowView(profile: authService.currentUser) { reason, text in
+                pendingDeleteReason = reason
+                pendingDeleteText = text
+                // Let the sheet finish closing before the confirmation comes up.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                    showDeleteAlert = true
+                }
+            }
+        }
         .alert("Delete Account", isPresented: $showDeleteAlert) {
             Button("Cancel", role: .cancel) {}
             Button("Continue", role: .destructive) {
@@ -378,6 +392,11 @@ struct ProfileView: View {
             Button("Delete My Account", role: .destructive) {
                 Task {
                     do {
+                        if let reason = pendingDeleteReason {
+                            // Sent first: once the account is gone there is no session to send it with.
+                            await ExitFeedbackService.shared.submit(kind: .delete, reason: reason, text: pendingDeleteText)
+                            pendingDeleteReason = nil
+                        }
                         try await authService.deleteAccount()
                         presentationMode.wrappedValue.dismiss()
                     } catch {

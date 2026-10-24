@@ -86,6 +86,8 @@ class VPNManager: ObservableObject {
     private static let connectedAtKey = "vpnConnectedAt"
     private var hasRecordedReviewPromptForCurrentConnection = false
     private var connectTask: Task<Void, Never>?
+    // True while a connect(to:) task is running, including its pre-flight checks.
+    private var isConnectAttemptActive = false
 
     // Network monitoring for auto-connect triggers
     private var pathMonitor: NWPathMonitor?
@@ -428,10 +430,19 @@ class VPNManager: ObservableObject {
 
     func connect(to server: Server) {
         guard connectionState == .disconnected else { return }
+        // connectionState stays .disconnected for the whole pre-flight below (profile refresh, app
+        // config), so a second trigger would start a second connect and replace connectTask,
+        // leaving the first one impossible to cancel.
+        guard !isConnectAttemptActive else {
+            LogService.shared.logApp("[VPNManager] Connect ignored: another connect attempt is already running")
+            return
+        }
+        isConnectAttemptActive = true
 
         LogService.shared.logApp("[VPNManager] Connect requested: \(server.city ?? server.countryName) (\(server.id))")
 
         connectTask = Task {
+            defer { isConnectAttemptActive = false }
             do {
                 // Subscription check. The foreground refresh in MainTabView normally keeps this
                 // current, but if the user pays on the website and switches back fast enough to
@@ -468,9 +479,8 @@ class VPNManager: ObservableObject {
                     }
                     LogService.shared.logApp("[VPNManager] Connect failed: subscription not active", level: .error)
                     // Every manual connect path (power button, server tap, Settings toggle) ends
-                    // here for an unpaid account, and auto-connect can't — it needs a server that
-                    // was connected to before — so this is "tried to connect, got the paywall".
-                    MilestoneService.shared.record(.connectAttempted)
+                    // here for an unpaid account; auto-connect can't, it needs a server that
+                    // was connected to before.
                     pendingServer = server
                     needsSubscription = true
                     return
@@ -512,6 +522,10 @@ class VPNManager: ObservableObject {
             } catch VPNError.cancelled {
                 // User-initiated cancel (tap-again-to-cancel) — expected, nothing to surface.
                 LogService.shared.logApp("[VPNManager] Connect cancelled")
+            } catch VPNError.alreadyConnecting {
+                // A duplicate trigger lost the race to a connect that is already running. Nothing
+                // went wrong, so no error for the user.
+                LogService.shared.logApp("[VPNManager] Connect skipped: already connecting")
             } catch let apiError as APIError {
                 if case .unauthorized = apiError {
                     authService.handleUnauthorized()
@@ -804,11 +818,15 @@ class VPNManager: ObservableObject {
             break
         }
 
-        connectTask?.cancel()
+        let previousConnect = connectTask
+        previousConnect?.cancel()
         connectTask = Task { [weak self] in
             guard let self else { return }
             defer { self.isSwitchingServer = false }
             let didDisconnect = await self.waitForDisconnected()
+            // A cancelled connect may still be unwinding; let it finish so its in-flight flag is
+            // cleared before the new connect starts.
+            await previousConnect?.value
             guard !Task.isCancelled else { return }
             guard didDisconnect else {
                 self.errorMessage = "Unable to switch servers. Please try again."

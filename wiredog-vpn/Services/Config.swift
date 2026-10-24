@@ -41,6 +41,17 @@ enum Config {
     // prod while running against the int API (or vice versa) always fails the exchange.
     static let checkoutURL: URL = URL(string: Bundle.main.infoDictionary?["WireDogURLCheckout"] as? String ?? "https://www.example.com/checkout")!
 
+    // The free-trial checkout is the same page as checkoutURL with ?trial=1 (card only, no discount
+    // codes). It receives the same one-time handoff code in the URL fragment.
+    static var trialCheckoutURL: URL {
+        guard var components = URLComponents(url: checkoutURL, resolvingAgainstBaseURL: false) else { return checkoutURL }
+        components.queryItems = (components.queryItems ?? []) + [URLQueryItem(name: "trial", value: "1")]
+        return components.url ?? checkoutURL
+    }
+
+    // Apple's own page for cancelling or changing an App Store subscription.
+    static let manageAppleSubscriptionsURL: URL = URL(string: "https://apps.apple.com/account/subscriptions")!
+
     static let appStoreURL: URL = URL(string: Bundle.main.infoDictionary?["WireDogAppStoreURL"] as? String ?? "https://apps.apple.com/app/example/id0")!
 
     static let pricingURL: URL = URL(string: "https://www.wiredogvpn.com/#pricing")!

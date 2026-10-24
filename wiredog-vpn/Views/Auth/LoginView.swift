@@ -11,6 +11,9 @@ struct LoginView: View {
     @State private var errorMessage = ""
     @State private var showForgotPassword = false
     @State private var showSSO = false
+    // Shown in red under the password field. Used for the direct-to-browser SSO path, the way
+    // Android shows its SSO errors on the login form.
+    @State private var ssoError: String?
     // Set when a password/account-number login came back "2FA required". Held in memory only.
     @State private var twoFactorChallenge: String?
     @State private var showTwoFactor = false
@@ -124,6 +127,13 @@ struct LoginView: View {
                     if sanitized != newValue { password = sanitized }
                 }
 
+            if let ssoError {
+                Text(ssoError)
+                    .font(.system(size: 14))
+                    .foregroundColor(.vpnRed)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
             GradientActionButton(
                 title: "Sign In",
                 isLoading: authService.isLoading,
@@ -165,14 +175,17 @@ struct LoginView: View {
                     .padding(.top, 4)
             }
 
-            // Business employees whose organization uses single sign-on
-            Button(action: { showSSO = true }) {
+            // Business employees whose organization uses single sign-on. With an email already
+            // typed this goes straight to the organization's sign-in page; otherwise the
+            // dedicated SSO page asks for the email.
+            Button(action: startSSO) {
                 Text("Sign in with SSO")
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(.vpnTextSecondary)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.top, 4)
             }
+            .disabled(authService.isLoading)
 
             Spacer()
 
@@ -282,7 +295,27 @@ struct LoginView: View {
 
     // MARK: - Actions
 
+    /// "Sign in with SSO": a valid email goes straight to the browser, anything else opens the page.
+    private func startSSO() {
+        guard isValidEmail(email) else {
+            showSSO = true
+            return
+        }
+        Task { await signInWithSSO() }
+    }
+
+    private func signInWithSSO() async {
+        ssoError = nil
+        do {
+            try await authService.signInWithSSO(email: email)
+            // Success flips AuthService.isAuthenticated; the app replaces the login screen.
+        } catch {
+            ssoError = error.localizedDescription
+        }
+    }
+
     private func loginStandard() {
+        ssoError = nil
         guard isValidEmail(email) else {
             errorMessage = "Please enter a valid email address."
             showError = true
@@ -295,7 +328,7 @@ struct LoginView: View {
                 // ever fail with "Invalid credentials". Check first and route them to SSO instead.
                 // A failed lookup counts as "no SSO", so a network blip never blocks password login.
                 if await authService.ssoAvailable(for: email) {
-                    showSSO = true
+                    await signInWithSSO()
                     return
                 }
                 handle(try await authService.loginStandard(email: email, password: password))

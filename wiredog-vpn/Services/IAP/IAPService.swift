@@ -128,6 +128,25 @@ final class IAPService: ObservableObject {
         return found
     }
 
+    /// Whether an Apple subscription for this app on the current Apple ID is set to renew. Used to
+    /// warn before an account is deleted (deleting does not cancel Apple's billing) and to skip
+    /// "your plan ended" reminders for a plan that will renew itself.
+    func isAutoRenewOn() async -> Bool {
+        for await result in Transaction.currentEntitlements {
+            guard case .verified(let tx) = result,
+                  Self.productIDs.contains(tx.productID),
+                  tx.revocationDate == nil else { continue }
+            guard let product = try? await Product.products(for: [tx.productID]).first,
+                  let statuses = try? await product.subscription?.status else { continue }
+            for status in statuses {
+                if case .verified(let info) = status.renewalInfo, info.willAutoRenew {
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
     private func validateAndRefresh(transactionID: UInt64, productID: String, jws: String) async throws {
         iapLog("validateAndRefresh — sending to backend", level: .info)
         iapLog("validateAndRefresh — transactionID=\(transactionID), productID=\(productID), jwsLength=\(jws.count)", level: .debug)

@@ -58,6 +58,10 @@ struct VPNServiceTests {
         seedPendingDisconnectIds: [String] = []
     ) async -> (service: VPNService, tunnel: FakeVPNTunnelManager, auth: AuthService) {
         UserDefaults.standard.removeObject(forKey: "vpn_session_id")
+        // VPNService keeps the live session id in the App Group suite, not .standard. A session
+        // left there by an earlier test would be "recovered" by this test's loadVPNManager() and
+        // fire a stray /disconnect.
+        UserDefaults(suiteName: Config.appGroupIdentifier)?.removeObject(forKey: VPNService.sessionIdKey)
         if seedPendingDisconnectIds.isEmpty {
             UserDefaults.standard.removeObject(forKey: "vpn_pending_disconnect_ids")
         } else {
@@ -168,6 +172,34 @@ struct VPNServiceTests {
         #expect(connectRequests().isEmpty)
         #expect(disconnectRequests().isEmpty)
         #expect(service.sessionId == nil)
+    }
+
+    // MARK: - b2. Two overlapping connects -> exactly one /vpn/connect
+
+    @Test func connect_twoOverlappingCalls_onlyOneBackendConnect() async throws {
+        let (service, _, _) = await makeService(connectSessionId: "sess-race")
+
+        // Both calls start before either has reached `.connecting` (that happens after several
+        // awaits), which is exactly how two triggers raced in the field. The loser must be turned
+        // away before it can call /vpn/connect and orphan the winner's counter increment.
+        async let first: Void = service.connect(serverId: "us-east-1", killSwitchEnabled: false)
+        async let second: Void = service.connect(serverId: "us-east-1", killSwitchEnabled: false)
+
+        var failures: [Error] = []
+        do { try await first } catch { failures.append(error) }
+        do { try await second } catch { failures.append(error) }
+        await service.lastCleanupTask?.value
+
+        #expect(connectRequests().count == 1)
+        #expect(failures.count == 1)
+        #expect((failures.first as? VPNError).map { if case .alreadyConnecting = $0 { return true } else { return false } } == true)
+        #expect(disconnectRequests().isEmpty)
+        #expect(service.sessionId == "sess-race")
+
+        // Leave no stored session behind: it lives in shared defaults and the next test's
+        // loadVPNManager() would otherwise "recover" it and fire an unrelated /disconnect.
+        UserDefaults(suiteName: Config.appGroupIdentifier)?.removeObject(forKey: VPNService.sessionIdKey)
+        UserDefaults.standard.removeObject(forKey: VPNService.sessionIdKey)
     }
 
     // MARK: - c. startVPNTunnel throws after sessionId obtained -> net zero
@@ -319,6 +351,10 @@ struct VPNServiceTests {
         // sometime after launch, while the app was backgrounded.
         UserDefaults.standard.set(["stale-fg-session"], forKey: "vpn_pending_disconnect_ids")
 
+        // The first willEnterForeground in a process's life is deliberately skipped (it coincides
+        // with the cold-start retry), so post one to consume that and a second for the real return
+        // from the background.
+        NotificationCenter.default.post(name: UIApplication.willEnterForegroundNotification, object: nil)
         NotificationCenter.default.post(name: UIApplication.willEnterForegroundNotification, object: nil)
         // The observer is registered with queue: .main, which enqueues asynchronously — give it
         // a beat to run before checking, then await the cleanup Task it schedules.

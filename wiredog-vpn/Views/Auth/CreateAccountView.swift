@@ -149,7 +149,7 @@ struct CreateAccountView: View {
                                 Text("•")
                                     .foregroundColor(.vpnTextSecondary)
 
-                                Text("Anonymous: Log in with only a 16-digit account number, maximum privacy")
+                                Text("Anonymous: Log in with only a 16-digit account number, maximum privacy. Not eligible for the 14-day free trial")
                                     .font(.system(size: 12))
                                     .foregroundColor(.vpnTextSecondary)
                             }

@@ -9,6 +9,17 @@ struct ChangeLogEntry: Identifiable {
 
 private let changeLog: [ChangeLogEntry] = [
     ChangeLogEntry(
+        version: "1.8.1",
+        date: "October 2026",
+        changes: [
+            "New accounts can start a 14-day free trial from the plans screen. Anonymous accounts aren't eligible.",
+            "In-app notifications added",
+            "Initiating account deletion now explains cancellation of your subscription",
+            "Sign in with SSO now goes straight to your organization's sign-in when your email is already entered.",
+            "Fixed a bug where connecting could use up an extra device slot.",
+        ]
+    ),
+    ChangeLogEntry(
         version: "1.8.0",
         date: "October 2026",
         changes: [
